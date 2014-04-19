@@ -1,0 +1,755 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="iGeekBuildCommon">
+	<description>
+        Common build file definitions and tasks for iGeek, Inc.
+	</description>
+	<target name="loadAntContrib" unless="ant-contrib-loaded">
+		<path id="groovy">
+			<pathelement location="${basedir}/../iGeekCommon/antlibs/groovy-all-2.1.5.jar"/>
+		</path>
+		<taskdef resource="net/sf/antcontrib/antcontrib.properties">
+			<classpath>
+				<pathelement location="${basedir}/../iGeekCommon/antlibs/ant-contrib-1.0b3.jar"/>
+			</classpath>
+		</taskdef>
+		<taskdef name="groovy" classname="org.codehaus.groovy.ant.Groovy">
+			<classpath>
+				<pathelement location="${basedir}/../iGeekCommon/antlibs/groovy-all-2.1.5.jar"/>
+			</classpath>
+		</taskdef>
+	</target>
+	<!-- This should be overriden in whatever file is calling this one.  We leave it here to maek Eclipse shut up-->
+
+	<target name="localProperties"/>
+	<target name="baseDefines">
+		<property name="src" location="src" />
+		<property name="testSrc" location="test" />
+		<property name="nativesrc" location="nativesrc" />
+		<property name="output" location="output" />
+		<path id="localLibs"/>
+		<!-- will be filled in later by setupOtherProjects -->
+		<path id="mergeJarsPath"/>
+		<!-- will be filled in later by setupOtherProjects -->
+		<path id="testMergeJarsPath">
+			<!-- will be filled in later by setupOtherProjects -->
+			<fileset dir="testlibs">
+				<include name="*.jar"/>
+			</fileset>
+		</path>
+		<path id="separateJarsPath"/>
+		<!-- Separate jars from other projects, filled in by setupOtherProjects -->
+		<path id="nativeLibsPath">
+			<!-- Native libs from other projects, filled in by setupOtherProjects -->
+			<fileset dir="mergelibs">
+				<include name="*.jnilib"/>
+				<include name="*.so"/>
+				<include name="*.dylib"/>
+			</fileset>
+		</path>
+		<path id="cleanAllPath"/>
+	</target>
+	<target name="init" depends="loadAntContrib, baseDefines, localProperties, setProperties, setupOtherProjects, setRevision"/>
+	<target name="setupOtherProjects">
+		<!--  Override this in your build file to add other projects using the addOtherProject macro (see below) -->
+	</target>
+	<target name="setRevision">
+		<!-- Override this in your build file to set the revision -->
+	</target>
+	<target name="setProperties">
+		<!-- Create the time stamp -->
+		<tstamp />
+		<property name="utilitySrcs" location="utilities" />
+		<property name="utilityObjs" location="${output}/utilityObjs" />
+		<property name="docs" location="${output}/docs" />
+		<property name="liboutput" location="${output}/lib" />
+		<property name="testsLiboutput" location="${output}/testlib"/>
+		<property name="separateLibsOutput" location="${liboutput}/separate"/>
+		<property name="execoutput" location="${output}/exec" />
+		<property name="javaObjs" location="${output}/javaObjs" />
+		<property name="testObjs" location="${output}/testObjs" />
+		<property name="testOutputDir" location="${output}/testOutput"/>
+		<property name="jarDir" location="${output}/jarDir" />
+		<property name="testJarDir" location="${output}/testJarDir" />
+		<property name="objs" location="${output}/objs" />
+		<property name="rmicSrc" location="rmicSrc"/>
+		<property name="targetJar" location="${liboutput}/${jarName}"/>
+		<property name="testsTargetJar" location="${testsLiboutput}/${testsJarName}"/>
+		<!-- Create the build directory structure used by compile -->
+		<mkdir dir="${output}" />
+		<mkdir dir="${liboutput}" />
+		<mkdir dir="${separateLibsOutput}"/>
+		<mkdir dir="${execoutput}" />
+		<mkdir dir="${javaObjs}" />
+		<mkdir dir="${rmicSrc}" />
+		<mkdir dir="${objs}" />
+		<mkdir dir="${testObjs}"/>
+		<mkdir dir="${docs}" />
+		<mkdir dir="${testOutputDir}"/>
+		<if>
+			<and>
+				<available file="mergelibs"/>
+				<available file="separatelibs"/>
+			</and>
+			<then>
+				<path id="commonLibs">
+					<fileset dir="mergelibs">
+						<include name="*.jar" />
+					</fileset>
+					<fileset dir="separatelibs">
+						<include name="*.jar" />
+					</fileset>
+				</path>
+			</then>
+			<else>
+				<if>
+					<or>
+						<available file="mergelibs"/>
+						<available file="separatelibs"/>
+					</or>
+					<then>
+						<if>
+							<available file="mergelibs"/>
+							<then>
+								<path id="commonLibs">
+									<fileset dir="mergelibs">
+										<include name="*.jar" />
+									</fileset>
+								</path>
+							</then>
+						</if>
+						<if>
+							<available file="separatelibs"/>
+							<then>
+								<path id="commonLibs">
+									<fileset dir="separatelibs">
+										<include name="*.jar" />
+									</fileset>
+								</path>
+							</then>
+						</if>
+					</then>
+					<else>
+						<path id="commonLibs"/>
+					</else>
+				</if>
+			</else>
+		</if>
+		<if>
+			<isreference refid="localLibs"/>
+			<then>
+				<path id="baseLibs">
+					<path refid="commonLibs"/>
+					<path refid="localLibs"/>
+				</path>
+			</then>
+			<else>
+				<path id="baseLibs">
+					<path refid="commonLibs"/>
+				</path>
+			</else>
+		</if>
+		<!--  This is here to allow OS specific common build files to insert some stuff -->
+		<if>
+			<isreference refid="osLibs"/>
+			<then>
+				<path id="libs">
+					<path refid="baseLibs"/>
+					<path refid="osLibs"/>
+				</path>
+			</then>
+			<else>
+				<path id="libs">
+					<path refid="baseLibs"/>
+				</path>
+			</else>
+		</if>
+		<if>
+			<isreference refid="localTestLibs"/>
+			<then>
+				<path id="testLibs">
+					<path refid="libs"/>
+					<path refid="localTestLibs"/>
+				</path>
+			</then>
+			<else>
+				<path id="testLibs">
+					<path refid="libs"/>
+				</path>
+			</else>
+		</if>
+	</target>
+
+	<macrodef name="javaCompile">
+		<attribute name="srcDir"/>
+		<attribute name="libRefID"/>
+		<attribute name="destination"/>
+		<element name="copyFilterSet" optional="yes"/>
+		<sequential>
+			<javac debug="true" destdir="@{destination}" target="1.5" source="1.5" includeantruntime="false">
+				<src path="@{srcDir}" />
+				<classpath>
+					<path refid="@{libRefID}" />
+				</classpath>
+				<!--<exclude name="**/*_Stub.java" />-->
+			</javac>
+			<copy todir="@{destination}">
+				<fileset dir="@{srcDir}">
+					<exclude name="**/*.java"/>
+					<exclude name="**/*.class"/>
+				</fileset>
+				<copyFilterSet/>
+			</copy>
+		</sequential>
+	</macrodef>
+
+	<!--  The basic javaCompile -->
+	<target name="javaCompile" depends="init" description="compile the source ">
+		<!-- Compile the java code from ${src} into ${build} -->
+		<javaCompile srcDir="${src}" destination="${javaObjs}" libRefID="libs"/>
+	</target>
+
+	<!--  The basic testsCompile -->
+	<target name="testsCompile" depends="init, javaCompile" description="compile the tests">
+		<!-- Compile the java code from ${src} into ${build} -->
+		<javac debug="true" destdir="${testObjs}" target="1.5" source="1.5">
+			<src path="${testSrc}" />
+			<classpath>
+				<path refid="testLibs"/>
+				<pathelement location="${javaObjs}"/>
+			</classpath>
+		</javac>
+	</target>
+	<macrodef name="buildJar">
+		<attribute name="jarName"/>
+		<attribute name="mergeLibsDir"/>
+		<attribute name="targetJar"/>
+		<attribute name="javaObjsDir"/>
+		<attribute name="jarWorkDir"/>
+		<attribute name="includes" default=""/>
+		<attribute name="excludes" default=""/>
+		<attribute name="mergeJarsPath" default="mergeJarsPath"/>
+		<element name="jarFilterSet" optional="yes"/>
+		<element name="jarManifest" optional="yes"/>
+		<sequential>
+			<if>
+				<available file="@{mergeLibsDir}"/>
+				<then>
+					<uptodate property="@{jarName}.noRebuildJar" targetFile="@{targetJar}">
+						<srcfiles dir="@{javaObjsDir}" includes="**/*"/>
+						<srcfiles dir="@{mergeLibsDir}" includes="*.jar"/>
+					</uptodate>
+				</then>
+				<else>
+					<uptodate property="@{jarName}.noRebuildJar" targetFile="@{targetJar}">
+						<srcfiles dir="@{javaObjsDir}" includes="**/*"/>
+					</uptodate>
+				</else>
+			</if>
+			<if>
+				<not>
+					<isset property="@{jarName}.noRebuildJar"/>
+				</not>
+				<then>
+					<delete dir="@{jarWorkDir}" quiet="true" />
+					<mkdir dir="@{jarWorkDir}" />
+					<copy todir="@{jarWorkDir}">
+						<fileset dir="@{javaObjsDir}" excludes="@{excludes}" includes="@{includes}"/>
+						<jarFilterSet/>
+					</copy>
+					<if>
+						<available file="@{mergeLibsDir}"/>
+						<then>
+							<unjar dest="@{jarWorkDir}">
+								<fileset dir="@{mergeLibsDir}">
+									<include name="*.jar" />
+								</fileset>
+							</unjar>
+						</then>
+					</if>
+					<if>
+						<isreference refid="@{mergeJarsPath}"/>
+						<then>
+							<unjar dest="@{jarWorkDir}">
+								<path refid="@{mergeJarsPath}"/>
+							</unjar>
+						</then>
+					</if>
+					<delete quiet="true" file="@{targetJar}" />
+					<!--<delete quiet="true">-->
+					<echo message="delete @{jarWorkDir} excludes=@{excludes}"/>
+					<delete>
+						<fileset dir="@{jarWorkDir}">
+							<include name="LICENSE"/>
+							<include name="META-INF"/>
+							<include name="META-INF/**"/>
+							<include name="NOTICE"/>
+						</fileset>
+					</delete>
+					<if>
+						<not><equals arg1="" arg2="@{excludes}"/></not>
+						<then>
+							<delete dir="@{jarWorkDir}" includes="@{excludes}" includeemptydirs="true"/>
+						</then>
+					</if>
+					<if>
+						<not><equals arg1="" arg2="@{includes}"/></not>
+						<then>
+							<delete dir="@{jarWorkDir}" excludes="@{includes}" includeemptydirs="true"/>
+						</then>
+					</if>
+					<jar destfile="@{targetJar}" basedir="@{jarWorkDir}">
+					    <jarManifest/>
+					</jar>
+					<!-- Tried it with the jar task and just rezipping the jars on the fly but it is dog doggy slow so
+					went back to unziping and rezipping the files -->
+					<!--<if>
+						<available file="@{mergeLibsDir}"/>
+						<then>
+							<path id="@{targetJar}.mergeLibsPath">
+								<fileset dir="@{mergeLibsDir}" includes="*.jar"/>
+								<path refid="@{mergeJarsPath}"/>
+							</path>
+						</then>
+						<else>
+							<path id="@{targetJar}.mergeLibsPath">
+								<path refid="@{mergeJarsPath}"/>
+							</path>
+						</else>
+					</if>
+					<jar destfile="@{targetJar}">
+						<fileset dir="@{javaObjsDir}"/>
+						<restrict>
+							<not><name name="META-INF/**"/></not>
+							<not><name name="LICENSE/**"/></not>
+							<not><name name="NOTICE/**"/></not>
+							<archives>
+								<zips>
+									<path refid="@{targetJar}.mergeLibsPath"/>
+								</zips>
+							</archives>
+						</restrict>
+					</jar>-->
+				</then>
+			</if>
+		</sequential>
+	</macrodef>
+	<macrodef name="buildJarNoMerge">
+		<attribute name="jarName"/>
+		<attribute name="targetJar"/>
+		<attribute name="javaObjsDir"/>
+		<attribute name="excludes" default=""/>
+		<attribute name="includes" default=""/>
+		<element name="jarFileSet" optional="yes"/>
+		<element name="jarManifest" optional="yes"/>
+		<sequential>
+			<uptodate property="@{jarName}.noRebuildJar" targetFile="@{targetJar}">
+				<srcfiles dir="@{javaObjsDir}" includes="**/*"/>
+			</uptodate>
+			<if>
+				<not>
+					<isset property="@{jarName}.noRebuildJar"/>
+				</not>
+				<then>
+					<delete quiet="true" file="@{targetJar}" />
+					<jar destfile="@{targetJar}" basedir="@{javaObjsDir}" excludes="@{excludes}" includes="@{includes}">
+					    <jarFileSet/>
+					</jar>
+				</then>
+			</if>
+		</sequential>
+	</macrodef>
+	<target name="buildJar" depends="init, otherBuilds, javaObjs, copySeparateLibs, copyNativeLibs">
+		<buildJar jarName="${jarName}" mergeLibsDir="mergelibs" targetJar="${targetJar}" javaObjsDir="${javaObjs}" jarWorkDir="${jarDir}"/>
+	</target>
+
+	<target name="buildTestsJar" depends="init, otherBuilds, otherTestBuilds, testsCompile, copySeparateTestsLibs">
+		<buildJar jarName="${testsJarName}" mergeLibsDir="mergelibs" targetJar="${testsTargetJar}" javaObjsDir="${testObjs}" jarWorkDir="${testJarDir}"
+		mergeJarsPath="testMergeJarsPath"/>
+	</target>
+
+	<target name="copySeparateLibs" depends="init">
+		<if>
+			<available file="separatelibs"/>
+			<then>
+				<copy todir="${separateLibsOutput}">
+					<fileset dir="separatelibs">
+						<include name="*.jar"/>
+						<include name="*.jnilib"/>
+						<include name="*.so"/>
+						<include name="*.dylib"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+		<if>
+			<isreference refid="separateJarsPath"/>
+			<then>
+				<copy todir="${separateLibsOutput}">
+					<path refid="separateJarsPath"/>
+				</copy>
+			</then>
+		</if>
+	</target>
+	<target name="copyNativeLibs" depends="init">
+		<if>
+			<isreference refid="nativeLibsPath"/>
+			<then>
+				<copy todir="${liboutput}">
+					<path refid="nativeLibsPath"/>
+				</copy>
+			</then>
+		</if>
+	</target>
+	<target name="copySeparateTestsLibs" depends="init">
+		<if>
+			<available file="separatelibs"/>
+			<then>
+				<copy todir="${separateLibsOutput}">
+					<fileset dir="separatelibs">
+						<include name="*.jar"/>
+						<include name="*.jnilib"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+		<if>
+			<isreference refid="separateJarsPath"/>
+			<then>
+				<copy todir="${separateLibsOutput}">
+					<path refid="separateJarsPath"/>
+				</copy>
+			</then>
+		</if>
+	</target>
+	<target name="javaObjs" depends="javaCompile, rmic"/>
+
+	<target name="javadoc" depends="init" description="Builds the Javadoc documentation">
+		<javadoc sourcepath="${src}" destdir="${docs}" packagenames="com.igeekinc.*">
+			<classpath refid="libs" />
+		</javadoc>
+	</target>
+
+	<target name="cleanRMIC" depends="init">
+		<delete quiet="true">
+			<fileset dir="${src}">
+				<include name="**/*_Stub.java"/>
+				<include name="**/*_Skel.java"/>
+			</fileset>
+			<fileset dir="${rmicSrc}">
+				<include name="**/*_Stub.java"/>
+				<include name="**/*_Skel.java"/>
+			</fileset>
+			<fileset dir="${javaObjs}">
+				<include name="**/*_Stub.class"/>
+				<include name="**/*_Skel.class"/>
+			</fileset>
+		</delete>
+	</target>
+	<!-- RMIC the remote files -->
+	<target name="rmic" depends="javaCompile">
+		<uptodate property="iGeekCommon.noRebuildRMIC">
+			<srcfiles dir="${javaObjs}" includes="**/*Impl.class"/>
+			<mapper type="glob" from="*.class" to="${rmicSrc}/*_Stub.java"/>
+		</uptodate>
+		<if>
+			<not>
+				<isset property="iGeekCommon.noRebuildRMIC"/>
+			</not>
+			<then>
+				<antcall target="cleanRMIC"/>
+				<rmic sourcebase="${rmicSrc}" base="${javaObjs}" classpathref="libs" stubversion="1.1" verify="yes" includes="**/*Impl.class"/>
+				<!--<move toDir="${src}">
+					<fileset dir="${javaObjs}">
+						<include name="**/*_Stub.java"/>
+						<include name="**/*_Skel.java"/>
+					</fileset>
+				</move>-->
+				<!--<javaCompile srcDir="${rmicSrc}" destination="${javaObjs}" libRefID="libs"/>-->
+			</then>
+		</if>
+	</target>
+
+	<target name="utilities" depends="javaObjs">
+		<mkdir dir="${utilityObjs}" />
+		<javac debug="true" destdir="${utilityObjs}" target="1.5" source="1.5">
+			<src path="${utilitySrcs}" />
+			<classpath>
+				<path refid="libs" />
+				<pathelement location="/System/Library/Java" />
+			</classpath>
+			<exclude name="**/*_Stub.java" />
+		</javac>
+	</target>
+
+	<target name="clean" depends="init" description="Removes the ${output} folder">
+		<if>
+			<available file="${output}"/>
+			<then>
+				<if>
+					<os family="unix"/>
+					<then>
+						<exec executable="/bin/rm" failonerror="Y">
+							<arg value="-rf"/>
+							<arg value="${output}"/>
+						</exec>
+						<if>
+							<available file="${output}"/>
+							<then>
+								<fail message="Could not clean ${output}"/>
+							</then>
+						</if>
+					</then>
+				</if>
+				<if>
+					<os family="windows"/>
+					<then>
+						<delete includeEmptyDirs="true" quiet="y">
+							<fileset dir="${output}"/>
+						</delete>
+						<if>
+							<available file="${output}"/>
+							<then>
+								<fail message="Could not clean ${output}"/>
+							</then>
+						</if>
+					</then>
+				</if>
+			</then>
+		</if>
+	</target>
+
+
+	<target name="cleanAll" depends="init, clean" description="Removes the ${output} folder for this project and all projects it is dependent on">
+		<foreach target="cleanProject" param="cleanProjectDir">
+			<path refid="cleanAllPath"/>
+		</foreach>
+	</target>
+
+	<target name="cleanProject">
+		<ant dir="${cleanProjectDir}" target="cleanAll"/>
+	</target>
+	<!--  addOtherProject adds another project that this build is dependent on.  It fiddles with a bunch of things, the
+	end result is that the other project's generated jar files and separate libs are added to the classpath, those jar files are either
+	merged into our output jar file (generated jar files) or copied to our separate libs dir, the other project
+	will be built automatically, the other project is added to the cleanAll list -->
+	<macrodef name="addOtherProject">
+		<attribute name="otherProjectName"/>
+		<attribute name="classPathRefID"/>
+		<attribute name="buildTarget" default="otherBuilds"/>
+		<attribute name="outputLibsDest" default="${liboutput}"/>
+		<attribute name="separateLibsDest" default="${separateLibsOutput}"/>
+		<attribute name="mergeJarsPathRefIDName" default="mergeJarsPath"/>
+		<attribute name="separateJarsPathRefIDName" default="separateJarsPath"/>
+		<attribute name="nativeLibsPathRefIDName" default="nativeLibsPath"/>
+		<sequential>
+			<groovy>
+				otherProjectName="@{otherProjectName}"
+				classPathRefIDName="@{classPathRefID}"
+				mergeJarsPathRefIDName="@{mergeJarsPathRefIDName}"
+				separateJarsPathRefIDName="@{separateJarsPathRefIDName}";
+				nativeLibsPathRefIDName="@{nativeLibsPathRefIDName}";
+				buildTargetName="@{buildTarget}"
+				
+				classPathRef = project.getReference(classPathRefIDName);
+				mergeJarsPathRef = project.getReference(mergeJarsPathRefIDName)
+				separateJarsPathRef = project.getReference(separateJarsPathRefIDName)
+				nativeLibsPathRef = project.getReference(nativeLibsPathRefIDName);
+				otherProjectDir = new File("../"+otherProjectName)
+				otherProjectOutputLibs = new File(otherProjectDir, "/output/lib")
+				otherProjectSeparateLibs = new File(otherProjectOutputLibs, "/separate")
+				
+				<!--  
+				<fileset dir="../${otherProjectName}/output/lib">
+					<include name="*.jar"/>
+				</fileset>
+				 -->
+ 				outputLibsFileSet = ant.fileset(dir:otherProjectOutputLibs) 
+ 				{
+        			include(name:"*.jar")
+   				}
+   				classPathRef.addFileset(outputLibsFileSet);
+				mergeJarsPathRef.addFileset(outputLibsFileSet);
+				
+				separateLibsFileSet = ant.fileset(dir:otherProjectSeparateLibs) 
+ 				{
+        			include(name:"*.jar")
+   				}
+   				classPathRef.addFileset(separateLibsFileSet);
+				separateJarsPathRef.addFileset(separateLibsFileSet);
+
+				nativeLibsFileSet = ant.fileset(dir:otherProjectOutputLibs)
+				{
+					include(name:"*.so")
+					include(name:"*.jnilib")
+					include(name:"*.dylib")
+				}
+				nativeLibsPathRef.addFileset(nativeLibsFileSet)
+				
+				targets = project.getTargets()
+				buildTarget = targets.get(buildTargetName)
+				if (buildTarget == null)
+				{
+					buildTarget = new org.apache.tools.ant.Target()
+					buildTarget.setName(buildTargetName)
+					project.addTarget(buildTargetName, buildTarget)
+				}
+				
+				<!-- Build the other project -->
+				buildTask = new org.apache.tools.ant.taskdefs.Ant();
+				buildTask.setProject(project);
+				buildTask.setDir(otherProjectDir);
+				paramProperty = buildTask.createProperty();
+				paramProperty.setName("ant-contrib-loaded");
+				paramProperty.setValue("y");
+				buildTask.setTarget("buildJar");
+				buildTask.setAntfile("build.xml");
+				buildTask.setInheritAll(false);
+				buildTask.setTaskName("otherBuilds");
+				buildTarget.addTask(buildTask);
+				
+				<!-- copy the separate libs over -->
+				File outputLibFile = new File("output/lib");
+				File outputLibSeparateFile = new File(outputLibFile, "separate");
+				copyTask = new org.apache.tools.ant.taskdefs.Copy();
+				copyTask.setProject(project);
+				copyTask.setTodir(outputLibSeparateFile);
+				copyTask.addFileset(separateLibsFileSet);
+				buildTarget.addTask(copyTask);
+				
+				<!--  Add to the cleanAll path -->
+				cleanAllPathRef = project.getReference("cleanAllPath")
+				cleanAllPathRef.setLocation(otherProjectDir);
+				
+				<!-- Add the testObjs to the testLib path -->
+				testLibsRef = project.getReference("testLibs");
+				testMergeJarsPathRef = project.getReference("testMergeJarsPath");
+				testOutputLibsSet = ant.fileset(dir:"../@{otherProjectName}/output/testlib") 
+ 				{
+        			include(name:"*.jar")
+   				}
+				testLibsRef.addFileset(testOutputLibsSet);
+				testMergeJarsPathRef.addFileset(testOutputLibsSet);
+				<!-- Build the other project tests -->
+				
+				testsBuildTarget = targets.get("otherTestBuilds");
+				
+				buildTask = new org.apache.tools.ant.taskdefs.Ant();
+				buildTask.setProject(project);
+				buildTask.setDir(otherProjectDir);
+				paramProperty = buildTask.createProperty();
+				paramProperty.setName("ant-contrib-loaded");
+				paramProperty.setValue("y");
+				buildTask.setTarget("buildTestsJar");
+				buildTask.setAntfile("build.xml");
+				buildTask.setInheritAll(false);
+				buildTask.setTaskName("otherTestBuilds");
+				testsBuildTarget.addTask(buildTask);
+			</groovy>
+		</sequential>
+	</macrodef>
+	<target name="otherBuilds">
+		<!-- This target will be filled in by the addOtherProject Groovy code -->
+	</target>
+	<target name="otherTestBuilds">
+		<!-- This target will be filled in by the addOtherProject Groovy code -->
+	</target>
+	<macrodef name="buildOtherProject">
+		<attribute name="projectDirName"/>
+		<sequential>
+			<ant dir="../@{projectDirName}" inheritAll="false" target="buildJar">
+				<property name="ant-contrib-loaded" value="y"/>
+				<!-- Set this so we don't reload ant-contrib and generate a bunch of noise-->
+			</ant>
+		</sequential>
+	</macrodef>
+	<!--  This is a target that can be used to build the iGeekCommon project.  Also use as a template for others -->
+	<target name="buildiGeekCommon">
+		<buildOtherProject projectDirName="iGeekCommon" />
+	</target>
+
+	<target name="generateHelpFiles" depends="init">
+		<!-- We generate the help files into their own directory for easier access -->
+		<exec executable="../iGeekCommon/bin/md2html.rb" failonerror="true">
+			<arg value="${manualDir}/ja/${shortName}.markdown" />
+			<arg value="${helpBuild}" />
+			<arg value="${templatesDir}/toc_template.htm" />
+			<arg value="${templatesDir}/section_template.htm" />
+			<arg value="-APPNAME=${productName}" />
+			<arg value="-HELPTITLE=${helpBookName}" />
+		</exec>
+		<!--<exec executable="../LocalizationTools/bin/md2html.rb" failonerror="true">
+			<arg value="${localizedManual}/en/${shortName}.markdown" />
+			<arg value="${helpBuild}" />
+			<arg value="Localized/Docs/Manual/Templates/toc_template.htm" />
+			<arg value="Localized/Docs/Manual/Templates/section_template.htm" />
+			<arg value="-APPNAME=${productName}" />
+			<arg value="-HELPTITLE=${helpBookName}" />
+		</exec>-->
+		<mkdir dir="${helpBuild}/images" />
+		<copy overwrite="false" todir="${helpBuild}/images">
+			<fileset dir="${manualImagesDir}" includes="**/*" />
+		</copy>
+		<mkdir dir="${helpBuild}/styles" />
+		<copy overwrite="false" todir="${helpBuild}/styles">
+			<fileset dir="${manualStylesDir}" includes="**/*" />
+		</copy>
+		<!-- Now, copy the help directory into the application -->
+		<copy overwrite="true" todir="${jaHelpDir}">
+			<fileset dir="${helpBuild}" includes="**" />
+		</copy>
+	</target>
+	<macrodef name="generateHelpFile">
+		<attribute name="markdownFile"/>
+		<attribute name="helpBuildDir"/>
+		<attribute name="templatesDir"/>
+		<attribute name="productName"/>
+		<attribute name="helpBookName"/>
+		<attribute name="manualImagesDir"/>
+		<attribute name="manualStylesDir"/>
+		<attribute name="javaScriptDir" default="--NO--"/>
+		<sequential>
+			<mkdir dir="@{helpBuildDir}/images" />
+			<copy overwrite="true" todir="@{helpBuildDir}/images">
+				<fileset dir="@{manualImagesDir}" includes="**/*" />
+			</copy>
+			<mkdir dir="@{helpBuildDir}/styles" />
+			<copy overwrite="true" todir="@{helpBuildDir}/styles">
+				<fileset dir="@{manualStylesDir}" includes="**/*" />
+			</copy>
+			<echo message="javaScriptDir = @{javaScriptDir}"/>
+			<if>
+				<not><equals arg1="--NO--" arg2="@{javaScriptDir}"/></not>
+				<then>
+					<mkdir dir="@{helpBuildDir}/js"/>
+					<copy overwrite="true" todir="@{helpBuildDir}/js">
+						<fileset dir="@{javaScriptDir}" includes="**/*" />
+					</copy>
+				</then>
+			</if>
+			<!-- We generate the help files into their own directory for easier access -->
+			<exec executable="../iGeekCommon/bin/md2html.rb" failonerror="true">
+				<arg value="@{markdownFile}" />
+				<arg value="@{helpBuildDir}" />
+				<arg value="@{templatesDir}/toc_template.htm" />
+				<arg value="@{templatesDir}/section_template.htm" />
+				<arg value="-APPNAME=@{productName}" />
+				<arg value="-HELPTITLE=@{helpBookName}" />
+			</exec>
+		</sequential>
+	</macrodef>
+	<target name="setBuildRev">
+		<if>
+			<available file="buildRev.properties"/>
+			<then>
+				<property file="buildRev.properties"/>
+			</then>
+			<else>
+				<pathconvert property="revisionCheckPath" refid="cleanAllPath" pathsep=" "/>
+				<exec executable="bash" outputproperty="buildRev">
+					<arg value="-c" />
+					<arg value="svn info . ${revisionCheckPath} | grep '^Revision:' | sed -e 's/Revision: //' | sort -r | head -1" />
+				</exec>
+			</else>
+		</if>
+	</target>
+</project>

@@ -1,0 +1,2 @@
+Because of junit's class loader, you must add com.igeekinc.junitext to the 
+jnit.runner.excluded.properties file or things will not work right
