@@ -19,7 +19,6 @@ package com.igeekinc.firehose;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.channels.ServerSocketChannel;
 import java.security.InvalidKeyException;
 import java.security.KeyManagementException;
 import java.security.KeyPair;
@@ -41,14 +40,12 @@ import java.util.concurrent.Future;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.x500.X500Principal;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bouncycastle.x509.X509V1CertificateGenerator;
-import org.newsclub.net.unix.AFUNIXServerSocketChannelImpl;
 import org.newsclub.net.unix.AFUNIXSocketAddress;
 import org.perf4j.log4j.Log4JStopWatch;
 
@@ -134,15 +131,21 @@ public class AFUNIXSSLSocketRemoteServerTest extends iGeekTestCase
 	@Override
 	public Level getLoggingLevel()
 	{
-		return Level.INFO;
+		return Level.ERROR;
 	}
 
 	@Override
 	protected void setUp() throws Exception
 	{
 		super.setUp();
-		ServerSocketChannel serverChannel = AFUNIXServerSocketChannelImpl.open(getConnectAddress());
-		server = new TestRemoteServer(serverChannel, getServerSSLContext());
+		AFUNIXSocketAddress connectAddress = getConnectAddress();
+
+		File socketFile = new File(((AFUNIXSocketAddress)connectAddress).getSocketFile());
+		if (socketFile.exists())
+		{
+			socketFile.delete();
+		}
+		server = new TestRemoteServer(connectAddress, getServerSSLContext());
 	}
 	
 	@Override
@@ -153,17 +156,16 @@ public class AFUNIXSSLSocketRemoteServerTest extends iGeekTestCase
 	}
 	public AFUNIXSocketAddress getConnectAddress() throws IOException
 	{
-		AFUNIXSocketAddress returnAddress = new AFUNIXSocketAddress(new File("/tmp/af-firehose-test"));
+		File socketFile = new File("/tmp/af-firehose-test");
+		AFUNIXSocketAddress returnAddress = new AFUNIXSocketAddress(socketFile);
 		return returnAddress;
 	}
 	
-	public SSLEngine getClientSSLEngine() throws NoSuchAlgorithmException, KeyManagementException
+	public SSLContext getClientSSLContext() throws NoSuchAlgorithmException, KeyManagementException
 	{
 		SSLContext sslContext = SSLContext.getInstance("TLS");
 		sslContext.init(null, trustFactory.getTrustManagers(), new SecureRandom());
-		SSLEngine returnEngine = sslContext.createSSLEngine();
-		returnEngine.setUseClientMode(true);
-		return returnEngine;
+		return sslContext;
 	}
 	
 	public SSLContext getServerSSLContext() throws NoSuchAlgorithmException, KeyManagementException
@@ -176,7 +178,7 @@ public class AFUNIXSSLSocketRemoteServerTest extends iGeekTestCase
 	public void testBasic()
 	throws Exception
 	{
-		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLEngine());
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
 		assertEquals(3, client.add(1, 2));
 		Future<Void>sleepFuture = client.sleep(10);
 		sleepFuture.get();
@@ -186,7 +188,7 @@ public class AFUNIXSSLSocketRemoteServerTest extends iGeekTestCase
 	public static final int kNumRepeatRuns = 10000;
 	public void testRepeated() throws Exception
 	{
-		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLEngine());
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
 		Log4JStopWatch stopWatch = new Log4JStopWatch("testRepeated");
 		for (int curRunNum = 0; curRunNum < kNumRepeatRuns; curRunNum++)
 		{
@@ -195,6 +197,21 @@ public class AFUNIXSSLSocketRemoteServerTest extends iGeekTestCase
 		stopWatch.stop();
 		System.out.println(kNumRepeatRuns + " runs in "+stopWatch.getElapsedTime()+" ms "+
 				((double)kNumRepeatRuns/(double)stopWatch.getElapsedTime())+" runs/ms");
+		client.close();
+	}
+	
+	public void testReconnect() throws Exception
+	{
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
+		assertEquals(3, client.add(1, 2));
+		Future<Void>sleepFuture = client.sleep(10);
+		sleepFuture.get();
+		client.close();
+		
+		client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
+		assertEquals(3, client.add(1, 2));
+		sleepFuture = client.sleep(10);
+		sleepFuture.get();
 		client.close();
 	}
 	
@@ -230,7 +247,7 @@ public class AFUNIXSSLSocketRemoteServerTest extends iGeekTestCase
 	public void testOutOfOrderCompletion() throws Exception
 	{
 		SleepCompletionMonitor monitor = new SleepCompletionMonitor();
-		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLEngine());
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
 		client.sleep(10000, monitor, 2);
 		client.sleep(5000, monitor, 1);
 		client.sleep(1000, monitor, 0);
@@ -244,7 +261,7 @@ public class AFUNIXSSLSocketRemoteServerTest extends iGeekTestCase
 	
 	public void testError() throws Exception
 	{
-		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLEngine());
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
 		boolean caught = false;
 		try
 		{

@@ -26,7 +26,6 @@ public class FailWithIOErrorCommand extends CommandMessage
 	public int value1;
 	public FailWithIOErrorCommand(int value1)
 	{
-		super(TestRemoteServer.TestCommand.kFailWithIOErrorCommand.commandNum);
 		this.value1 = value1;
 	}
 	/**
@@ -35,5 +34,10 @@ public class FailWithIOErrorCommand extends CommandMessage
 	public FailWithIOErrorCommand()
 	{
 		
+	}
+	@Override
+	protected int getInitCommandCode()
+	{
+		return TestRemoteServer.TestCommand.kFailWithIOErrorCommand.commandNum;
 	}
 }

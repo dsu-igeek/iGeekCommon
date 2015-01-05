@@ -19,17 +19,30 @@ package com.igeekinc.util;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Enumeration;
+import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.newsclub.net.unix.AFUNIXSocket;
+import org.newsclub.net.unix.PeerCredentials;
 
 import com.igeekinc.util.exceptions.FeatureNotSupportedException;
 import com.igeekinc.util.exceptions.GroupNotFoundException;
 import com.igeekinc.util.exceptions.UserNotFoundException;
 import com.igeekinc.util.fileinfo.FileInfoDBManager;
 import com.igeekinc.util.fsevents.FSEventsProcessor;
+import com.igeekinc.util.fsevents.FileStateChangedEventListener;
+import com.igeekinc.util.fsevents.FileStateChangedSupport;
 import com.igeekinc.util.logging.ErrorLogMessage;
+import com.igeekinc.util.msgpack.ClientFileMetaDataMsgPack;
 import com.igeekinc.util.scripting.ScriptExecutor;
 import com.igeekinc.util.xmlserial.XMLObjectParseHandler;
 import com.igeekinc.util.xmlserial.XMLObjectSerializeHandler;
@@ -39,6 +52,8 @@ public abstract class SystemInfo// extends ChangeModel
   static SystemInfo mySystemInfo;
   CheckCorrectDispatchThread eventDispatcher = null;
   protected static FileInfoDBManager fileInfoDBManager;
+  protected FileStateChangedSupport fileStateChangedSupport;
+  
   //PauseAbort sleepPauser = new PauseAbort(org.apache.log4j.Logger.getLogger(SystemInfo.class));
   
   @SuppressWarnings("unchecked")
@@ -174,11 +189,16 @@ static public synchronized SystemInfo getSystemInfo()
   {
     return (File.separator);
   }
-  public User getSASLAuthenticatedUser()
+  public User getSocketAuthenticatedUser()
   throws UserNotFoundException
   {
 	  try
 	  {
+		  PeerCredentials peerCredentials = AFUNIXSocket.getThreadPeerCredentials();
+		  if (peerCredentials != null)
+		  {
+			  return getUserInfoForUID(peerCredentials.getUID());
+		  }
 		  String userName = cryptix.sasl.rmi.SaslSocket.getSASLUsername();
 		  if (userName.equals("indelibleRMI"))
 			  userName = getAdminUser().getUserName();
@@ -229,10 +249,12 @@ static public synchronized SystemInfo getSystemInfo()
   }
   
   public abstract FSEventsProcessor getFSEventsProcessor() throws FeatureNotSupportedException;
-  public void setDispatcher(CheckCorrectDispatchThread inDispatcher)
+  public synchronized void setDispatcher(CheckCorrectDispatchThread inDispatcher)
   {
       eventDispatcher = inDispatcher;
       getVolumeManager().setDispatcher(eventDispatcher);
+      if (fileStateChangedSupport != null)
+    	  fileStateChangedSupport.setDispatcher(eventDispatcher);
   }
   
   public abstract Date getSystemBootTime();
@@ -294,6 +316,125 @@ static public synchronized SystemInfo getSystemInfo()
       return null;
   }
   
+  public InterfaceAddressInfo [] getActiveAddresses()
+  {
+	  ArrayList<InterfaceAddressInfo>returnInfoList = new ArrayList<InterfaceAddressInfo>();
+	  try
+	  {
+		  Enumeration<NetworkInterface>interfaces = NetworkInterface.getNetworkInterfaces();
+		  while (interfaces.hasMoreElements())
+		  {
+			  NetworkInterface curInterface = interfaces.nextElement();
+			  if (isUp(curInterface))
+			  {
+				  ArrayList<InterfaceAddressInfo> infoForInterface = getInfoForInterface(curInterface);
+				  returnInfoList.addAll(infoForInterface);
+			  }
+		  }
+	  } catch (SocketException e)
+	  {
+		  // TODO Auto-generated catch block
+		  Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+	  }
+	  InterfaceAddressInfo [] returnInfo = returnInfoList.toArray(new InterfaceAddressInfo[returnInfoList.size()]);
+	  return returnInfo;
+  }
+  
+  private boolean getInterfaceAddressesMethodChecked = false;
+  private Method getInterfaceAddressesMethod;
+  private Class<?> interfaceAddressClass;
+  private Method getAddressMethod, getNetworkPrefixLengthMethod;
+  public ArrayList<InterfaceAddressInfo> getInfoForInterface(NetworkInterface curInterface)
+  {
+	  try
+	  {
+		  if (!getInterfaceAddressesMethodChecked)
+		  {
+			  getInterfaceAddressesMethodChecked = true;
+			  getInterfaceAddressesMethod = NetworkInterface.class.getMethod("getInterfaceAddresses");
+			  interfaceAddressClass = Class.forName("java.net.InterfaceAddress");
+			  getAddressMethod = interfaceAddressClass.getMethod("getAddress");
+			  getNetworkPrefixLengthMethod = interfaceAddressClass.getMethod("getNetworkPrefixLength");
+		  }
+	  } catch (NoSuchMethodException e)
+	  {
+		  // TODO Auto-generated catch block
+		  Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+	  } catch (SecurityException e)
+	  {
+		  // TODO Auto-generated catch block
+		  Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+	  } catch (ClassNotFoundException e)
+	  {
+		  // TODO Auto-generated catch block
+		  Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+	  }
+	  
+	  ArrayList<InterfaceAddressInfo>returnInfoList = new ArrayList<InterfaceAddressInfo>();
+	  if (getInterfaceAddressesMethod != null)
+	  {
+		  try
+		{
+			List interfaceAddressesList = (List) getInterfaceAddressesMethod.invoke(curInterface);
+			  for (Object curInterfaceAddress:interfaceAddressesList)
+			  {
+				  InetAddress interfaceAddress = (InetAddress) getAddressMethod.invoke(curInterfaceAddress);
+				  short networkPrefixLength = (Short) getNetworkPrefixLengthMethod.invoke(curInterfaceAddress);
+				  InterfaceAddressInfo curInfo = new InterfaceAddressInfo(interfaceAddress, networkPrefixLength);
+				  returnInfoList.add(curInfo);
+			  }
+		} catch (IllegalAccessException e)
+		{
+			// TODO Auto-generated catch block
+			Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+		} catch (IllegalArgumentException e)
+		{
+			// TODO Auto-generated catch block
+			Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+		} catch (InvocationTargetException e)
+		{
+			// TODO Auto-generated catch block
+			Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+		}
+	  }
+	  else
+	  {
+		  
+	  }
+	  return returnInfoList;
+  }
+  
+  private Method	isUpMethod;
+  private boolean	isUpMethodChecked = false;
+  private boolean isUp(NetworkInterface checkInterface)
+  {
+	  try
+	  {
+		  if (!isUpMethodChecked)
+		  {
+			  isUpMethodChecked = true;		// Whether it succeeds or not we checked it so it's not going to change later
+			  isUpMethod = NetworkInterface.class.getMethod("isUp");
+		  }
+		  if (isUpMethod != null)
+			  return (Boolean)isUpMethod.invoke(checkInterface);
+	  } catch (NoSuchMethodException e)
+	  {
+	  } catch (SecurityException e)
+	  {
+	  } catch (IllegalAccessException e)
+	  {
+		  Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+	  } catch (IllegalArgumentException e)
+	  {
+		  Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+	  } catch (InvocationTargetException e)
+	  {
+		  Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+	  }
+	  return true;	// 1.5 or lower - all interfaces are always up
+  }
+  
+  
   public abstract void restartSystem();
   
   /**
@@ -305,4 +446,33 @@ static public synchronized SystemInfo getSystemInfo()
   public abstract Class<?> getMetaDataClass();
   public abstract Class<? extends XMLObjectSerializeHandler<? extends ClientFileMetaData>> getMetaDataSerializerClass();
   public abstract Class<? extends XMLObjectParseHandler<? extends ClientFileMetaData>> getMetaDataParserClass();
+  
+  public synchronized void addFileStateChangedListener(FilePath listenPath, FileStateChangedEventListener listener)
+  {
+	  if (fileStateChangedSupport == null)
+	  {
+		  fileStateChangedSupport = new FileStateChangedSupport(eventDispatcher);
+	  }
+	  fileStateChangedSupport.addFileStateChangeListener(listenPath, listener);
+  }
+  
+  public synchronized void removeFileStateChangedListener(FilePath listenPath, FileStateChangedEventListener listener)
+  {
+	  if (fileStateChangedSupport != null)
+	  {
+		  fileStateChangedSupport.removeFileStateChangeListener(listenPath, listener);
+	  }
+  }
+
+  public abstract Class<? extends ClientFileMetaDataMsgPack> getMetaDataMsgPackSerializer();
+  
+  /**
+   * Returns the "compare all" bitmask.  Override in OS specific SystemInfo to exclude bits that are not settable (e.g. Unix
+   * change time)
+   * @return
+   */
+  public ClientFileMetaDataCompareAttr getCompareAllAttrsBitMask()
+  {
+	  return ClientFileMetaDataCompareAttr.kAllAttrs;
+  }
 }

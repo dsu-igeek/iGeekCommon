@@ -18,9 +18,9 @@ package com.igeekinc.firehose;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.KeyManagementException;
 import java.security.KeyPair;
@@ -42,13 +42,13 @@ import java.util.concurrent.Future;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.x500.X500Principal;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bouncycastle.x509.X509V1CertificateGenerator;
+import org.newsclub.net.unix.AFUNIXSocketAddress;
 import org.perf4j.log4j.Log4JStopWatch;
 
 import com.igeekinc.junitext.iGeekTestCase;
@@ -135,7 +135,7 @@ public class SSLRemoteServerTest extends iGeekTestCase
 	@Override
 	public Level getLoggingLevel()
 	{
-		return Level.DEBUG;
+		return Level.ERROR;
 	}
 
 	@Override
@@ -147,17 +147,23 @@ public class SSLRemoteServerTest extends iGeekTestCase
 	
 	public InetSocketAddress getConnectAddress() throws UnknownHostException
 	{
-		InetSocketAddress returnAddress = new InetSocketAddress(InetAddress.getByName("localhost"), server.getServerPort());
+		InetSocketAddress returnAddress = server.getListenAddresses(new AddressFilter()
+		{
+			
+			@Override
+			public boolean add(InetSocketAddress checkAddress)
+			{
+				return (!(checkAddress instanceof AFUNIXSocketAddress));
+			}
+		})[0];
 		return returnAddress;
 	}
 	
-	public SSLEngine getClientSSLEngine() throws NoSuchAlgorithmException, KeyManagementException
+	public SSLContext getClientSSLContext() throws NoSuchAlgorithmException, KeyManagementException
 	{
 		SSLContext sslContext = SSLContext.getInstance("TLS");
 		sslContext.init(null, trustFactory.getTrustManagers(), new SecureRandom());
-		SSLEngine returnEngine = sslContext.createSSLEngine();
-		returnEngine.setUseClientMode(true);
-		return returnEngine;
+		return sslContext;
 	}
 	
 	public SSLContext getServerSSLContext() throws NoSuchAlgorithmException, KeyManagementException
@@ -169,7 +175,7 @@ public class SSLRemoteServerTest extends iGeekTestCase
 	public void testBasic()
 	throws Exception
 	{
-		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLEngine());
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
 		assertEquals(3, client.add(1, 2));
 		Future<Void>sleepFuture = client.sleep(10);
 		sleepFuture.get();
@@ -179,7 +185,7 @@ public class SSLRemoteServerTest extends iGeekTestCase
 	public static final int kNumRepeatRuns = 10000;
 	public void testRepeated() throws Exception
 	{
-		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLEngine());
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
 		Log4JStopWatch stopWatch = new Log4JStopWatch("testRepeated");
 		for (int curRunNum = 0; curRunNum < kNumRepeatRuns; curRunNum++)
 		{
@@ -223,7 +229,7 @@ public class SSLRemoteServerTest extends iGeekTestCase
 	public void testOutOfOrderCompletion() throws Exception
 	{
 		SleepCompletionMonitor monitor = new SleepCompletionMonitor();
-		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLEngine());
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
 		client.sleep(10000, monitor, 2);
 		client.sleep(5000, monitor, 1);
 		client.sleep(1000, monitor, 0);
@@ -237,7 +243,8 @@ public class SSLRemoteServerTest extends iGeekTestCase
 	
 	public void testError() throws Exception
 	{
-		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLEngine());
+		logger.error("Starting testError");
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
 		boolean caught = false;
 		try
 		{
@@ -249,5 +256,17 @@ public class SSLRemoteServerTest extends iGeekTestCase
 		}
 		assertTrue(caught);
 		client.close();
+	}
+	
+	public void testBulkData() throws Exception
+	{
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress(), getClientSSLContext());
+		byte [] bulkData = new byte[1024*1024];
+		ByteBuffer bulkDataByteBuffer = ByteBuffer.wrap(bulkData);
+		client.bulkData(bulkDataByteBuffer);
+		for (int curCheckByteNum = 0; curCheckByteNum < bulkData.length; curCheckByteNum++)
+		{
+			assertEquals('A', bulkData[curCheckByteNum]);
+		}
 	}
 }

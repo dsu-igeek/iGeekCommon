@@ -19,25 +19,51 @@ package com.igeekinc.firehose;
 import org.msgpack.annotation.Message;
 
 @Message
-public class CommandMessage
+public abstract class CommandMessage
 {
 	public int commandCode;
-
-	public CommandMessage(int commandCode)
-	{
-		this.commandCode = commandCode;
-	}
 	
 	/**
 	 * This is for msgpack - don't call this!
 	 */
 	public CommandMessage()
 	{
-		
+		this.commandCode = getInitCommandCode();
 	}
 	
 	public int getCommandCode()
 	{
 		return commandCode;
+	}
+	
+	protected abstract int getInitCommandCode();
+
+	@Override
+	public int hashCode()
+	{
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + commandCode;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj)
+	{
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		CommandMessage other = (CommandMessage) obj;
+		if (commandCode != other.commandCode)
+			return false;
+		return true;
+	}
+	
+	public String toString()
+	{
+		return "Command message: commandCode = "+commandCode;
 	}
 }

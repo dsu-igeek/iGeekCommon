@@ -45,11 +45,23 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.apache.log4j.Logger;
+
 import com.igeekinc.util.jdk14keycompat.PublicKeyWorkaroundInputStream;
 import com.igeekinc.util.jdk14keycompat.RSAPublicKeyOverride;
+import com.igeekinc.util.logging.ErrorLogMessage;
 
 /**
- * EncryptionKeys hold the keys for encrypting/decrypting 
+ * EncryptionKeys hold the keys for encrypting/decrypting
+ * 
+ * The encryption scheme uses a combination of RSA and AES.  First, the user enters a pass phrase that will
+ * be used for decryption.  We generate an RSA key and encrypt the private key using AES with the pass phrase as the
+ * key.  Each file is encrypted with a random AES key and that key is encrypted using the RSA public key.  When we decrypt,
+ * the user enters the pass phrase and the RSA private key is decrypted and used to decrypt each file's AES key which is
+ * then used to decrypt the actual file.
+ * 
+ * This allows us to encrypt files without having the pass phrase.
+ * 
  * @author David L. Smith-Uchida
  *
  */
@@ -75,13 +87,8 @@ public class EncryptionKeys implements Serializable
 			IllegalBlockSizeException,
 			BadPaddingException, IOException, NoSuchAlgorithmException, NoSuchProviderException
 	{
-		// First, from the passphrase we generate a key (secret) for
-		// AES
-
-		SecretKeySpec aesKey;
-		aesKey = generateAESKeyFromPBE(passPhrase);
-
-		// Next, we generate a random key for RSA
+		
+		// Generate a random key for RSA
 		KeyPairGenerator rsaKeyGenerator;
 		KeyPair rsaKeys;
 		// Use a keyfactory in order to create a key
@@ -90,6 +97,24 @@ public class EncryptionKeys implements Serializable
 		// Generate the secret key.
 		rsaKeyGenerator.initialize(1024);
 		rsaKeys = rsaKeyGenerator.generateKeyPair();
+		
+		serializedEncryptedKey = encryptRSAPrivateKeyWithAES(passPhrase, rsaKeys.getPrivate());
+		
+		wrappedEncryptedKey = null;
+		//decryptionKey = aes.wrap(rsaKeys.getPrivate());
+		// And keep track of the public key
+		encryptionKey = rsaKeys.getPublic();
+		// TODO - generate the escrowed password using RSA
+	}
+	private byte[] encryptRSAPrivateKeyWithAES(PBEKeySpec passPhrase, PrivateKey privateKey) throws NoSuchAlgorithmException, NoSuchPaddingException,
+			InvalidKeyException, IOException, IllegalBlockSizeException, BadPaddingException
+	{
+		// Generate a key (secret) for
+		// AES
+
+		SecretKeySpec aesKey;
+		aesKey = generateAESKeyFromPBE(passPhrase);
+
 		// Now, we encrypt the RSA private key (decryption key) using our
 		// AES (Rijndael) key based on the passphrase
 		Cipher aes = Cipher.getInstance(aesAlgorithm/*, "CryptixCrypto"*/); //$NON-NLS-1$
@@ -99,14 +124,14 @@ public class EncryptionKeys implements Serializable
 		ByteArrayOutputStream byteOutStream;
 		byteOutStream = new ByteArrayOutputStream();
 		keyOutStream = new ObjectOutputStream(byteOutStream);
-		keyOutStream.writeObject(rsaKeys.getPrivate());
+		keyOutStream.writeObject(privateKey);
 		keyOutStream.close();
 		byte [] serializedUnencryptedObject = byteOutStream.toByteArray();
 		int blockSize = aes.getBlockSize();
 		int enLen = serializedUnencryptedObject.length + (blockSize - (serializedUnencryptedObject.length % blockSize));
 		byte [] encryptInput = new byte[enLen];
 		System.arraycopy(serializedUnencryptedObject, 0, encryptInput, 0, serializedUnencryptedObject.length);
-		serializedEncryptedKey =
+		byte [] serializedEncryptedKeyLocal =
 			aes.doFinal(encryptInput);
 		MessageDigest MD5Generator = MessageDigest.getInstance("MD5"); //$NON-NLS-1$
 		checkMD5 = MD5Generator.digest(encryptInput);
@@ -116,12 +141,7 @@ public class EncryptionKeys implements Serializable
 			serializedUnencryptedObject[curByteNum] = 0;
 		for (int curByteNum = 0;curByteNum < encryptInput.length; curByteNum++)
 			encryptInput[curByteNum] = 0;
-		
-		wrappedEncryptedKey = null;
-		//decryptionKey = aes.wrap(rsaKeys.getPrivate());
-		// And keep track of the public key
-		encryptionKey = rsaKeys.getPublic();
-		// TODO - generate the escrowed password using RSA
+		return serializedEncryptedKeyLocal;
 	}
 	public PublicKey getEncryptionKey()
 	{
@@ -153,7 +173,7 @@ public class EncryptionKeys implements Serializable
 		return aesKey;
 	}
 	public PrivateKey decryptDecryptionKey(PBEKeySpec passPhrase) 
-	throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalStateException, IllegalBlockSizeException, BadPaddingException, OptionalDataException, ClassNotFoundException, IOException
+	throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalStateException, IllegalBlockSizeException, BadPaddingException, OptionalDataException, IOException
 	{
 		// First, from the passphrase we generate a key (secret) for
 		// AES
@@ -184,14 +204,28 @@ public class EncryptionKeys implements Serializable
         if (System.getProperty("java.version").startsWith("1.4"))
         {
         	objectStream = new ObjectInputStream(byteStream);
-        	returnKey = (PrivateKey)objectStream.readObject();
+        	try
+			{
+				returnKey = (PrivateKey)objectStream.readObject();
+			} catch (ClassNotFoundException e)
+			{
+				Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+				throw new InternalError("Cannot find class when deserializing private key");
+			}
         }
         else
         {
         	try
         	{
         		objectStream = new PublicKeyWorkaroundInputStream(byteStream);	// Use the workaround - 1.4 default RSA keys (from the private sun SSL package) are not compatible with 1.5+
-        		returnKey = (PrivateKey)objectStream.readObject();
+        		try
+        		{
+        			returnKey = (PrivateKey)objectStream.readObject();
+        		} catch (ClassNotFoundException e)
+        		{
+        			Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+        			throw new InternalError("Cannot find class when deserializing private key");
+        		}
         	} catch (IOException e)
         	{
         		// This is gross.  But, the deserialization of these damned RSA classes is not working right.  So, if it fails, just slam the damn bytes in
@@ -294,4 +328,9 @@ public class EncryptionKeys implements Serializable
         
     }
 
+	public void changePassPhrase(PBEKeySpec oldPassPhrase, PBEKeySpec newPassPhrase) throws InvalidKeyException, OptionalDataException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalStateException, IllegalBlockSizeException, BadPaddingException, ClassNotFoundException, IOException
+	{
+		PrivateKey decryptedKey = decryptDecryptionKey(oldPassPhrase);
+		serializedEncryptedKey = encryptRSAPrivateKeyWithAES(newPassPhrase, decryptedKey);
+	}
 }

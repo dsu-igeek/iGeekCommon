@@ -16,6 +16,8 @@
  
 package com.igeekinc.firehose;
 
+import java.util.Date;
+
 /**
  * Contains info about a command to be processed by RemoteServer.  This is all rolled up in
  * a single class to make it easier to keep things together during asynchronous processing
@@ -26,6 +28,7 @@ public class CommandToProcess
 	private FirehoseChannel channel;
 	private long commandSequence;
 	private CommandMessage commandToProcess;
+	private long started, finished;
 	public CommandToProcess(FirehoseChannel channel, long commandSequence,
 			CommandMessage commandToProcess)
 	{
@@ -33,6 +36,8 @@ public class CommandToProcess
 		this.channel = channel;
 		this.commandSequence = commandSequence;
 		this.commandToProcess = commandToProcess;
+		started = -1;
+		finished = -1;
 	}
 	public FirehoseChannel getChannel()
 	{
@@ -46,4 +51,54 @@ public class CommandToProcess
 	{
 		return commandToProcess;
 	}
+	
+	public long getStarted()
+	{
+		return started;
+	}
+	public void setStarted(long started)
+	{
+		this.started = started;
+	}
+	public long getFinished()
+	{
+		return finished;
+	}
+	public void setFinished(long finished)
+	{
+		this.finished = finished;
+	}
+	public String toString()
+	{
+		StringBuffer returnBuffer = new StringBuffer();
+		returnBuffer.append("Channel: ");
+		returnBuffer.append(channel.toString());
+		returnBuffer.append(" command sequence = ");
+		returnBuffer.append(commandSequence);
+		returnBuffer.append(" Command = ");
+		returnBuffer.append(commandToProcess.toString());
+		returnBuffer.append(" Started:");
+		if (started < 0)
+		{
+			returnBuffer.append("<not started>");
+		}
+		else
+		{
+			Date startedDate = new Date(started);
+			returnBuffer.append(startedDate.toString());
+		}
+		returnBuffer.append(" Finished:");
+		if (finished < 0)
+		{
+			returnBuffer.append("<not finished>");
+		}
+		else
+		{
+			Date finishedDate = new Date(finished);
+			returnBuffer.append(finishedDate.toString());
+		}
+		return returnBuffer.toString();
+	}
+	
+	
 }

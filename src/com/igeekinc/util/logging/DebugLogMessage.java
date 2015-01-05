@@ -25,11 +25,12 @@ public class DebugLogMessage extends LocalizableLogMessage
 	/**
 	 * @param inArgs
 	 */
+	/*
 	public DebugLogMessage(String packageName, String key, Serializable [] inArgs)
 	{
 		super(packageName, key, inArgs);
 	}
-	
+	*/
 	public DebugLogMessage(String formatString, Serializable... inArgs)
 	{
 		super(formatString, inArgs);

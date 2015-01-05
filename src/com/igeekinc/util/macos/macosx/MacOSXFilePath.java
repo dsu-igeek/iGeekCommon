@@ -25,6 +25,7 @@ import com.igeekinc.util.ClientFileMetaData;
 import com.igeekinc.util.FilePath;
 import com.igeekinc.util.SystemInfo;
 import com.igeekinc.util.logging.ErrorLogMessage;
+import com.igeekinc.util.windows.WindowsFilePath;
 
 public class MacOSXFilePath extends FilePath
 {
@@ -50,6 +51,11 @@ public class MacOSXFilePath extends FilePath
 		init(components, offset, count, isAbsolute);
 	}
 	
+	private MacOSXFilePath()
+	{
+		// internal use only
+	}
+
 	/* (non-Javadoc)
 	 * @see com.igeekinc.util.FilePath#getNewFilePath(java.lang.String[], int, int, boolean)
 	 */
@@ -114,4 +120,17 @@ public class MacOSXFilePath extends FilePath
         }
         return returnPath;
     }
+    
+	@Override
+	public FilePath makeAbsolute()
+	{
+		if (isAbsolute)
+			return this;
+		MacOSXFilePath returnPath = new MacOSXFilePath();
+		String [] absolutePathComponents = new String[count + 1];
+		absolutePathComponents[0] = "";
+		System.arraycopy(pathComponents, offset, absolutePathComponents, 1, count);
+		returnPath.init(absolutePathComponents, 0, absolutePathComponents.length, true);
+		return returnPath;
+	}
 }

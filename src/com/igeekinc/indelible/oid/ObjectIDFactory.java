@@ -212,7 +212,7 @@ public class ObjectIDFactory
     return target;
   }
   
-  public ObjectID getNewOID(Class objectClass)
+  public ObjectID getNewOID(Class<?> objectClass)
   {
       ObjectID returnID = null;
       for (ObjectIDMapping checkMapping:mapping)
@@ -223,38 +223,6 @@ public class ObjectIDFactory
 			  break;
 		  }
 	  }
-      /*
-      if (ExecutionPlan.class.isAssignableFrom(objectClass))
-          returnID = new ExecutionPlanID(generatorID);
-      if (OperationSet.class.isAssignableFrom(objectClass))
-          returnID = new OperationSetID(generatorID);
-      if (MediaSet.class.isAssignableFrom(objectClass))
-          returnID = new MediaSetID(generatorID);
-      if (IndelibleRuleSet.class.isAssignableFrom(objectClass))
-          returnID = new IndelibleRuleSetID(generatorID);
-      if (CASCollectionConnection.class.isAssignableFrom(objectClass))
-          returnID = new CASCollectionID(generatorID);
-      if (IndelibleFSObject.class.isAssignableFrom(objectClass))
-          returnID = new IndelibleFSObjectID(generatorID);
-      if (FileOperationQueue.class.isAssignableFrom(objectClass))
-          returnID = new FileOperationQueueID(generatorID);
-      if (MediaInfo.class.isAssignableFrom(objectClass))
-          returnID = new MediaID(generatorID);
-      if (Inventory.class.isAssignableFrom(objectClass))
-          returnID = new InventoryID(generatorID);
-      if (Queue.class.isAssignableFrom(objectClass))
-          returnID = new QueueID(generatorID);
-      if (ExecutionPlanStatus.class.isAssignableFrom(objectClass))
-          returnID = new ExecutionPlanStatusID(generatorID);
-      if (NetworkDataDescriptor.class.isAssignableFrom(objectClass))
-          returnID = new NetworkDataDescriptorID(generatorID);
-      if (IndelibleEntity.class.isAssignableFrom(objectClass))
-          returnID = new EntityID(generatorID);
-      if (DataMoverSession.class.isAssignableFrom(objectClass))
-          returnID = new DataMoverSessionID(generatorID);
-      if (CASStore.class.isAssignableFrom(objectClass))
-    	  returnID = new CASStoreID(generatorID);
-    	  */
       if (returnID == null)
           throw new InternalError("Unrecognized class for object id "+objectClass.getName()); //$NON-NLS-1$
       returnID = setTimeAndUniquifier(returnID);

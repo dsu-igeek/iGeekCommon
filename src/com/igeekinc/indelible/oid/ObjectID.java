@@ -63,7 +63,8 @@ public abstract class ObjectID implements Serializable
     public static final byte kServerOIDType = 16;
     public static final byte kDataMoverSessionOIDType = 17;
     public static final byte kCASStoreOIDType = 18;
-
+    public static final byte kPerfomanceInfoOIDType = 19;
+    
     static final int kObjectIDLength = kReservedOffset + kReservedLen;
     public static final int kObjectStrLength = kReservedOffset * 2;  // When we serialize to a string the two empty bytes do not get serialized
     public void getBytes(byte [] dest, int offset)

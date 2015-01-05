@@ -21,8 +21,9 @@ import java.io.Serializable;
 /**
  * FSStreamOffset is an interface placeholder for the actual event stream offset.  Event stream offsets (if used) should identify
  * a point in time in the event stream.  They are expected to be serializable objects (e.g. Longs) that are 
- * treated as opaque - that is, you can compare them or add them and get anything meaningful.  The event stream offset
- * should be persistent if used.
+ * treated as opaque - that is, you can't compare the underlying values or add them and get anything meaningful.  
+ * The event stream offset should be persistent if used.  Implementations of the interface should implement Comparable (this
+ * isn't included in the interface because you cannot compare different implementations of FSStreamOffset)
  */
 public interface FSStreamOffset extends Serializable
 {

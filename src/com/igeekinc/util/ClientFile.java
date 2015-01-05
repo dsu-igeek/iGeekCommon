@@ -44,7 +44,9 @@ import com.igeekinc.util.logging.ErrorLogMessage;
 
 public abstract class ClientFile extends File implements Serializable, FileLike
 {
-  static final long serialVersionUID = 7319714950392853867L;
+
+
+static final long serialVersionUID = 7319714950392853867L;
   //String base, backupPath;
   FilePath base, backupPath;
   Volume volume;
@@ -343,4 +345,11 @@ public abstract class ClientFile extends File implements Serializable, FileLike
   {
       return new DefaultClientFileIterator(this);
   }
+  
+  @Override
+	public boolean renameTo(File dest)
+	{
+	  	filePath = null;
+		return super.renameTo(dest);
+	}
 }

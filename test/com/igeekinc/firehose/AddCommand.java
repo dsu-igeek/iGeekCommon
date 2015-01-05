@@ -27,7 +27,6 @@ public class AddCommand extends CommandMessage
 	public int value2;
 	public AddCommand(int value1, int value2)
 	{
-		super(TestRemoteServer.TestCommand.kAddCommand.commandNum);
 		this.value1 = value1;
 		this.value2 = value2;
 	}
@@ -37,5 +36,10 @@ public class AddCommand extends CommandMessage
 	public AddCommand()
 	{
 		
+	}
+	@Override
+	protected int getInitCommandCode()
+	{
+		return TestRemoteServer.TestCommand.kAddCommand.commandNum;
 	}
 }

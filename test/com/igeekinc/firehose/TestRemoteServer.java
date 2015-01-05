@@ -18,21 +18,26 @@ package com.igeekinc.firehose;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 
 import javax.net.ssl.SSLContext;
 
 import org.apache.log4j.Logger;
 
+import com.igeekinc.util.datadescriptor.BasicDataDescriptor;
 import com.igeekinc.util.logging.ErrorLogMessage;
 
-public class TestRemoteServer extends FirehoseServer
+public class TestRemoteServer extends FirehoseServer<String> implements SSLSetup
 {
+	protected SSLContext sslContext;
+	FirehoseTarget target;
+	
 	public enum TestCommand
 	{
 		kAddCommand(1),
 		kSleepCommand(2),
-		kFailWithIOErrorCommand(3);
+		kFailWithIOErrorCommand(3),
+		kBulkDataCommand(4);
 		
 		int commandNum;
 		private TestCommand(int commandNum)
@@ -55,6 +60,8 @@ public class TestRemoteServer extends FirehoseServer
 				return kSleepCommand;
 			case 3:
 				return kFailWithIOErrorCommand;
+			case 4:
+				return kBulkDataCommand;
 			}
 			throw new IllegalArgumentException();
 		}
@@ -63,24 +70,23 @@ public class TestRemoteServer extends FirehoseServer
 	{
 		this(null);
 	}
-	
+
 	public TestRemoteServer(SSLContext sslContext) throws IOException
 	{
-		this(ServerSocketChannel.open(), sslContext);
-	}
-	
-	public TestRemoteServer(ServerSocketChannel channel, SSLContext sslContext) throws IOException
-	{
+		super();
 		this.sslContext = sslContext;
-		serverSocketChannel = channel;
-		serverSocket = serverSocketChannel.socket();
-		if (!serverSocket.isBound())
-			serverSocket.bind(new InetSocketAddress(0));
-		createSelectLoop();
+		target = new FirehoseTarget(new InetSocketAddress(0), this, null, this);
 	}
 
+	public TestRemoteServer(InetSocketAddress address, SSLContext sslContext) throws IOException
+	{
+		super();
+		this.sslContext = sslContext;
+		target = new FirehoseTarget(address, this, null, this);
+	}
+	
 	@Override
-	protected void processCommand(CommandToProcess commandToProcess)
+	protected void processCommand(String clientInfo, CommandToProcess commandToProcess)
 	{
 		switch(TestCommand.getCommandForNum(commandToProcess.getCommandToProcess().getCommandCode()))
 		{
@@ -114,6 +120,20 @@ public class TestRemoteServer extends FirehoseServer
 		case kFailWithIOErrorCommand:
 		{
 			commandFailed(commandToProcess, new IOException());
+			logger.error("Completed commandFailed");
+			break;
+		}
+		case kBulkDataCommand:
+		{
+			BulkDataCommand bulkDataCommand = (BulkDataCommand)commandToProcess.getCommandToProcess();
+			logger.warn("Sending "+bulkDataCommand.bulkDataSize+" bytes of bulk data");
+			byte [] bulkData = new byte[bulkDataCommand.bulkDataSize];
+			for (int curByteNum = 0; curByteNum < bulkData.length; curByteNum++)
+				bulkData[curByteNum] = 'A';
+			BasicDataDescriptor bulkDataDescriptor = new BasicDataDescriptor(bulkData);
+			CommandResult result = new CommandResult(0, null, bulkDataDescriptor);
+			commandCompleted(commandToProcess, result);
+			break;
 		}
 		default:
 			throw new IllegalArgumentException();
@@ -132,6 +152,8 @@ public class TestRemoteServer extends FirehoseServer
 			return SleepCommand.class;
 		case kFailWithIOErrorCommand:
 			return FailWithIOErrorCommand.class;
+		case kBulkDataCommand:
+			return BulkDataCommand.class;
 		default:
 			throw new IllegalArgumentException();
 		}
@@ -150,5 +172,28 @@ public class TestRemoteServer extends FirehoseServer
 	{
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public boolean useSSL()
+	{
+		return sslContext != null;
+	}
+
+	@Override
+	public SSLContext getSSLContextForSocket(SocketChannel newChannel)
+	{
+		return sslContext;
+	}
+
+	public void targetShutdown()
+	{
+		target.shutdown();
+	}
+
+	@Override
+	protected String createClientInfo(FirehoseChannel channel)
+	{
+		return "Client "+channel.getChannelNum();
 	}
 }

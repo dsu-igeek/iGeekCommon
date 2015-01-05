@@ -16,20 +16,42 @@
  
 package com.igeekinc.firehose;
 
-import com.igeekinc.util.async.ComboFutureBase;
+import java.nio.ByteBuffer;
+import java.util.Date;
 
-public class CommandBlock
+import com.igeekinc.util.async.AsyncCompletion;
+
+/**
+ * CommandBlock is used by FirehoseClient to keep track of an outstanding command that has been issued to the server
+ * @author David L. Smith-Uchida
+ *
+ */
+public class CommandBlock <A>
 {
-	public long commandSequence;
-	public CommandMessage message;
+	private long commandSequence;									// Sequence number
+	private CommandMessage message;									// The command that was sent
+	private ByteBuffer bulkDataDestination;							// ByteBuffer to deliver bulk data to
+
+	private AsyncCompletion<? extends Object, A>completionHandler;	// Future to notify when the command completes
+	private A attachment;											// Attachment to send with the completion
+	private long createdAt = System.currentTimeMillis();
 	
-	private ComboFutureBase<? extends Object>future;
-	
-	public CommandBlock(long commandSequence, CommandMessage message, ComboFutureBase<? extends Object>future)
+	/**
+	 * 
+	 * @param commandSequence - Sequence number
+	 * @param message - The command that was sent
+	 * @param bulkDataDestination - ByteBuffer to deliver bulk data to (may be null)
+	 * @param completionHandler - Future to notify when the command completes
+	 * @param attachment - // Attachment to send with the notification
+	 */
+	public CommandBlock(long commandSequence, CommandMessage message, ByteBuffer bulkDataDestination, AsyncCompletion<? extends Object, A>completionHandler,
+			A attachment)
 	{
 		this.commandSequence = commandSequence;
 		this.message = message;
-		this.future = future;
+		this.completionHandler = completionHandler;
+		this.attachment = attachment;
+		this.bulkDataDestination = bulkDataDestination;
 	}
 	
 	/**
@@ -48,8 +70,29 @@ public class CommandBlock
 		return message;
 	}
 
-	public ComboFutureBase<Object> getFuture()
+	public AsyncCompletion<? extends Object, A> getFuture()
 	{
-		return (ComboFutureBase<Object>) future;
+		return completionHandler;
+	}
+	
+	public A getAttachment()
+	{
+		return attachment;
+	}
+
+	public ByteBuffer getBulkData()
+	{
+		return bulkDataDestination;
+	}
+	
+	public String toString()
+	{
+		StringBuffer returnBuffer = new StringBuffer();
+		returnBuffer.append("CommandBlock: ");
+		returnBuffer.append(message.toString());
+		returnBuffer.append(" ");
+		long elapsed = System.currentTimeMillis() - createdAt;
+		returnBuffer.append("Created at "+new Date(createdAt)+" "+elapsed+" ms ago");
+		return returnBuffer.toString();
 	}
 }

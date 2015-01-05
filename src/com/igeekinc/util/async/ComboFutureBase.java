@@ -38,6 +38,7 @@ public class ComboFutureBase<V> implements Future<V>, AsyncCompletion<V, Object>
 	private Object attachment;
 	protected V value;
 	
+	private static long defaultTimeout = 120000;		// Time out in 2 minutes max
 	public ComboFutureBase()
 	{
 		
@@ -75,11 +76,11 @@ public class ComboFutureBase<V> implements Future<V>, AsyncCompletion<V, Object>
 	{
 		try
 		{
-			return get(0, TimeUnit.MILLISECONDS);
+			return get(defaultTimeout, TimeUnit.MILLISECONDS);
 		} catch (TimeoutException e)
 		{
 			Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
-			return null;
+			throw new InterruptedException("Timed out");
 		}
 	}
 
@@ -87,11 +88,18 @@ public class ComboFutureBase<V> implements Future<V>, AsyncCompletion<V, Object>
 	public synchronized V get(long timeout, TimeUnit unit)
 			throws InterruptedException, ExecutionException, TimeoutException
 	{
-		long timeoutMS = unit.convert(timeout, TimeUnit.MILLISECONDS);
+		long timeoutMS = TimeUnit.MILLISECONDS.convert(timeout, unit);
     	long timeStartedMS = System.currentTimeMillis();
-    	while (!isDone() && (timeoutMS == 0 || timeoutMS > (timeStartedMS - System.currentTimeMillis())))
+    	long elapsed = System.currentTimeMillis() - timeStartedMS;
+    	while (!isDone() && (timeoutMS == 0 || timeoutMS > elapsed))
     	{
     		this.wait(timeoutMS);
+    		elapsed = System.currentTimeMillis() - timeStartedMS;
+    	}
+    	if (timeoutMS > 0 && timeoutMS <= elapsed)
+    	{
+    		Logger.getLogger(getClass()).error("ComboFutureBase timed out");
+    		throw new TimeoutException("Timed out after "+elapsed+" ms");
     	}
     	if (error != null)
     		throw new ExecutionException(error);

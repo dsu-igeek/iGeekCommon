@@ -17,6 +17,8 @@
 package com.igeekinc.util.linux;
 
 import com.igeekinc.util.FilePath;
+import com.igeekinc.util.macos.macosx.MacOSXFilePath;
+import com.igeekinc.util.windows.WindowsFilePath;
 
 public class LinuxFilePath extends FilePath
 {
@@ -45,6 +47,11 @@ public class LinuxFilePath extends FilePath
 		init(components, offset, count, isAbsolute);
 	}
 	
+	private LinuxFilePath()
+	{
+		// Internal use only
+	}
+
 	/* (non-Javadoc)
 	 * @see com.igeekinc.util.FilePath#getNewFilePath(java.lang.String[], int, int, boolean)
 	 */
@@ -74,4 +81,17 @@ public class LinuxFilePath extends FilePath
 		return (checkString.indexOf(separator) >= 0);
 	}
 
+	
+	@Override
+	public FilePath makeAbsolute()
+	{
+		if (isAbsolute)
+			return this;
+		LinuxFilePath returnPath = new LinuxFilePath();
+		String [] absolutePathComponents = new String[count + 1];
+		absolutePathComponents[0] = "";
+		System.arraycopy(pathComponents, offset, absolutePathComponents, 1, count);
+		returnPath.init(absolutePathComponents, 0, absolutePathComponents.length, true);
+		return returnPath;
+	}
 }

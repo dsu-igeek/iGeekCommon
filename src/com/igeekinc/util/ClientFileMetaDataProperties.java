@@ -18,6 +18,7 @@ package com.igeekinc.util;
 
 import java.lang.reflect.Constructor;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public abstract class ClientFileMetaDataProperties
@@ -26,7 +27,8 @@ public abstract class ClientFileMetaDataProperties
     private static Class<? extends ClientFileMetaDataProperties> propertiesClass;
     private static Constructor<? extends ClientFileMetaDataProperties> propertiesConstructor;
     
-    public static ClientFileMetaDataProperties getPropertiesForMap(HashMap<String, Object>map)
+    @SuppressWarnings("unchecked")
+	public static ClientFileMetaDataProperties getPropertiesForMap(Map<String, Object>map)
     {
     	if (map == null)
     		throw new IllegalArgumentException("Map cannot be null");
@@ -39,16 +41,24 @@ public abstract class ClientFileMetaDataProperties
     			{
     			case kMacOSX:
     				propertiesClass = (Class<? extends ClientFileMetaDataProperties>) Class.forName("com.igeekinc.util.macos.macosx.MacOSXFileMetaDataProperties");
-    				propertiesConstructor = propertiesClass.getConstructor(new Class<?>[]{HashMap.class});
+    				propertiesConstructor = propertiesClass.getConstructor(new Class<?>[]{Map.class});
     				break;
     			case kLinux:
     				propertiesClass = (Class<? extends ClientFileMetaDataProperties>) Class.forName("com.igeekinc.util.linux.LinuxFileMetaDataProperties");
-    				propertiesConstructor = propertiesClass.getConstructor(new Class<?>[]{HashMap.class});
+    				propertiesConstructor = propertiesClass.getConstructor(new Class<?>[]{Map.class});
     				break;
     			case kWindows:
     				propertiesClass = (Class<? extends ClientFileMetaDataProperties>) Class.forName("com.igeekinc.util.windows.WindowsFileMetaDataProperties");
-    				propertiesConstructor = propertiesClass.getConstructor(new Class<?>[]{HashMap.class});
+    				propertiesConstructor = propertiesClass.getConstructor(new Class<?>[]{Map.class});
     				break;
+				case kAIX:
+					throw new InternalError("AIX not supported");
+				case kBSD:
+					throw new InternalError("AIX not supported");
+				case kSolaris:
+					throw new InternalError("AIX not supported");
+				default:
+					break;
     				
     			}
 
@@ -57,6 +67,17 @@ public abstract class ClientFileMetaDataProperties
     	} catch (Exception e)
     	{
     		throw new InternalError("Got unexpected exception "+e.toString());
+    	}
+    }
+    
+    public ClientFileMetaDataProperties(Map<String, Object>map)
+    {
+    	if (map == null)
+    		throw new IllegalArgumentException("Map cannot be null");
+    	this.map = new HashMap<String, Object>();
+    	for (Map.Entry<String, Object>curEntry:map.entrySet())
+    	{
+    		this.map.put(curEntry.getKey(), curEntry.getValue());
     	}
     }
     
@@ -112,7 +133,7 @@ public abstract class ClientFileMetaDataProperties
     }
     
     @SuppressWarnings("unchecked")
-	public HashMap<String, Object> getMap()
+	public Map<String, Object> getMap()
     {
     	return (HashMap<String, Object>) map.clone();
     }

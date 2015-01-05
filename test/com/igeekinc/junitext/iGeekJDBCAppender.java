@@ -16,6 +16,7 @@
  
 package com.igeekinc.junitext;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -182,18 +183,30 @@ public class iGeekJDBCAppender extends org.apache.log4j.AppenderSkeleton
 				{
 
 					logStatement.setTimestamp(1, new java.sql.Timestamp(logEvent.timeStamp) );
-					logStatement.setString(2, logEvent.getThreadName());
-					logStatement.setString(3, logEvent.getLevel().toString());
-					logStatement.setString(4, logEvent.getLoggerName());
+					String threadName = logEvent.getThreadName();
+					logStatement.setString(2, threadName);
+					if (threadName.length() > 50)
+						threadName = threadName.substring(0, 50);
+					String severity = logEvent.getLevel().toString();
+					if (severity.length() > 10)
+						severity = severity.substring(0, 10);
+					logStatement.setString(3, severity);
+					String loggerName = logEvent.getLoggerName();
+					if (loggerName.length() > 300)
+						loggerName = loggerName.substring(0, 300);
+					logStatement.setString(4, loggerName);
 					String message = logEvent.getMessage().toString();
 					message = removeNulls(message);   // Filter out any nulls - the com.igeekinc.util.AES test has a nasty habit of slipping them into the message and this break the insert
-                    logStatement.setBytes(5, message.getBytes(Charset.forName("UTF-8")));
+                    logStatement.setBytes(5, message.getBytes("UTF-8"));
 					logStatement.execute();
 				} catch (SQLException e)
 				{
 					loggingStatement = null;
 					connection = null;
 					throw e;
+				} catch (UnsupportedEncodingException e)
+				{
+					throw new SQLException("Couldn't get UTF-8 char set");
 				}
 
 				removes.add(logEvent);

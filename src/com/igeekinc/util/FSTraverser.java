@@ -141,7 +141,22 @@ public abstract class FSTraverser
 		  {
 			  String curComponent = startPoint.getComponent(curPath.getNumComponents());
 			  if (toProcess.contains(curComponent))
-			  {	
+			  {
+				  if (startPoint.getNumComponents() > curPath.getNumComponents() + 1)
+				  {
+					  // We process files before processing directories.  If we need to go deeper into the tree, then we
+					  // should have already processed all the files.  Run through, find everything that's a file and trash it
+					  Iterator<String> iterator = toProcess.iterator();
+					  while(iterator.hasNext())
+					  {
+						  String curName = iterator.next();
+						  FileLike curFile = curDirectory.getChild(curName);
+						  if (!curFile.isDirectory())
+						  {
+							  iterator.remove();	// Not a directory, we should have already processed it
+						  }
+					  }
+				  }
 				  Iterator<String> iterator = toProcess.iterator();
 				  while (iterator.hasNext())
 				  {
@@ -182,32 +197,18 @@ public abstract class FSTraverser
 					  if (shouldHandle(curFile))
 						  handleMountPoint(curFile, pauser);
 					  processed.add(curName);
-					  toProcess.remove(curName);
 				  }
 				  else
 				  {	
 					  if (curFile.isDirectory())
 					  {
 						  directories.add(curName);
-						  toProcess.remove(curName);
-						  /*
-  						if (!searchForStartPoint)
-  						{	
-  							preprocessDirectory(curFile, pauser);
-  							if (shouldHandle(curFile))
-  								handleFile(curFile, pauser);
-  						}
-                        if (shouldHandleDirectory(curFile))
-                            recurseDirectory(curFile, pauser);
-  						postprocessDirectory(curFile, pauser);
-						   */
 					  }
 					  else
 					  {
 						  if (shouldHandle(curFile))
 							  handleFile(curFile, pauser);
 						  processed.add(curName);
-						  toProcess.remove(0);
 					  }
 				  }
 			  }
@@ -215,6 +216,10 @@ public abstract class FSTraverser
 		  catch (IOException e)
 		  {
 			  logger.error("Got IOException processing "+curFile, e);
+		  }
+		  finally
+		  {
+			  toProcess.remove(0);
 		  }
 
 		  if (curDirectory.lastModified() != curDirectoryModTime)
@@ -261,40 +266,44 @@ public abstract class FSTraverser
 		  {
 			  if (curFile != null)
 			  {
-				  if (curFile.isMountPoint())
+				  try
 				  {
-					  // handle a mount point (only really applies on Unix and unix-like system - or, everything except Windows)
-					  if (shouldHandle(curFile))
-						  handleMountPoint(curFile, pauser);
-					  processed.add(curName);
-					  directories.remove(0);
-				  }
-				  else
-				  {	
-					  if (curFile.isDirectory())
+					  if (curFile.isMountPoint())
 					  {
-						  if (!searchForStartPoint)
-						  {	
-							  preprocessDirectory(curFile, pauser);
-							  if (shouldHandle(curFile))
-								  handleFile(curFile, pauser);
-						  }
-						  if (shouldHandleDirectory(curFile))
-							  recurseDirectory(curFile, pauser);
-						  postprocessDirectory(curFile, pauser);
+						  // handle a mount point (only really applies on Unix and unix-like system - or, everything except Windows)
+						  if (shouldHandle(curFile))
+							  handleMountPoint(curFile, pauser);
 						  processed.add(curName);
-						  directories.remove(0);
 					  }
 					  else
-					  {
-						  // We still handle files even though we should only have directories at this point because it's possible
-						  // that a directory was changed into a file while we were scanning or that the directory was changed
-						  // in which case we reload everything
-						  if (shouldHandle(curFile))
-							  handleFile(curFile, pauser);
-						  processed.add(curName);
-						  directories.remove(0);
+					  {	
+						  if (curFile.isDirectory())
+						  {
+							  if (!searchForStartPoint)
+							  {	
+								  preprocessDirectory(curFile, pauser);
+								  if (shouldHandle(curFile))
+									  handleFile(curFile, pauser);
+							  }
+							  if (shouldHandleDirectory(curFile))
+								  recurseDirectory(curFile, pauser);
+							  postprocessDirectory(curFile, pauser);
+							  processed.add(curName);
+						  }
+						  else
+						  {
+							  // We still handle files even though we should only have directories at this point because it's possible
+							  // that a directory was changed into a file while we were scanning or that the directory was changed
+							  // in which case we reload everything
+							  if (shouldHandle(curFile))
+								  handleFile(curFile, pauser);
+							  processed.add(curName);
+						  }
 					  }
+				  }
+				  finally
+				  {
+					  directories.remove(0);
 				  }
 			  }
 		  }

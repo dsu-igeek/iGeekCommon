@@ -40,6 +40,7 @@ public class EncryptedFileFormat
     private static final String kBouncyCastleRSACipherSig = "RSA/ECB/PKCS1Padding";
     //private static final String kRSACipherSig = "RSA/ECB/PKCS#1";
     File ioFile;
+    FilePackage ioFilePackage;
 	private PublicKey publicKey;
 	private Key sessionKey;
 	static final byte [] fileSignature = {'i','n','d','l','e','n','c','t'};
@@ -47,14 +48,20 @@ public class EncryptedFileFormat
 	/**
 	 * 
 	 */
-	public EncryptedFileFormat(File inIOFile)
+	public EncryptedFileFormat(File ioFile)
 	{
-		ioFile = inIOFile;
+		this.ioFile = ioFile;
+	}
+	
+	public EncryptedFileFormat(FilePackage ioFilePackage)
+	{
+		this.ioFilePackage = ioFilePackage;
 	}
 	
 	public EncryptedFileFormat()
 	{
 		ioFile = null;
+		ioFilePackage = null;
 	}
 	
 	public void setEncryptionKeys(PublicKey newPublicKey, Key newSessionKey)
@@ -70,8 +77,8 @@ public class EncryptedFileFormat
 		return (returnStream);
 	}
 
-	public ForceMinLengthOutputStream getOutputStream(
-			OutputStream fileOutStream) throws IOException, InternalError {
+	public ForceMinLengthOutputStream getOutputStream(OutputStream fileOutStream) throws IOException, InternalError 
+	{
 		fileOutStream.write(fileSignature);
 
 		Cipher rsa;
@@ -129,9 +136,19 @@ public class EncryptedFileFormat
 	public InputStream getInputStream(PrivateKey decryptKey)
 	throws IOException
 	{
-		FileInputStream fileInStream = new FileInputStream(ioFile);	
-		InputStream returnStream = getInputStream(fileInStream,
-				decryptKey);
+		InputStream returnStream = null;
+		if (ioFile != null)
+		{
+			FileInputStream fileInStream = new FileInputStream(ioFile);	
+			returnStream = getInputStream(fileInStream,
+					decryptKey);
+		}
+		if (ioFilePackage != null)
+		{
+			InputStream filePackageInStream = ioFilePackage.getDataDescriptorForFork("data").getInputStream();
+			returnStream = getInputStream(filePackageInStream,
+					decryptKey);
+		}
 		return(returnStream);
 	}
 

@@ -250,6 +250,12 @@ public abstract class FilePath implements Serializable
 	
 	protected void init(String [] inPathComponents, int inOffset, int inCount, boolean inIsAbsolute)
 	{
+		if (inOffset + inCount > inPathComponents.length)
+			throw new IllegalArgumentException("count + offset > components length");
+		if (inOffset <0)
+			throw new IllegalArgumentException("offset < 0");
+		if (inCount < 0)
+			throw new IllegalArgumentException("count < 0");
 		pathComponents = inPathComponents;
 		offset = inOffset;
 		count = inCount;
@@ -390,6 +396,8 @@ public abstract class FilePath implements Serializable
     {
         if (numberToRemove > count)
             throw new IllegalArgumentException("Trying to remove "+numberToRemove+" trailing components but total number of components is only "+count);
+        if (numberToRemove < 0)
+        	throw new IllegalArgumentException("Cannot remove a negative number of components");
         return getNewFilePath(pathComponents, offset, count-numberToRemove, isAbsolute);
     }
     
@@ -550,4 +558,6 @@ public abstract class FilePath implements Serializable
         }
         return returnCode;
     }
+
+    public abstract FilePath makeAbsolute();
 }

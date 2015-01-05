@@ -17,13 +17,14 @@
 package com.igeekinc.firehose;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.Future;
 
 import org.apache.log4j.Level;
+import org.newsclub.net.unix.AFUNIXSocketAddress;
 import org.perf4j.log4j.Log4JStopWatch;
 
 import com.igeekinc.junitext.iGeekTestCase;
@@ -55,7 +56,15 @@ public class RemoteServerTest extends iGeekTestCase
 	
 	public InetSocketAddress getConnectAddress() throws UnknownHostException
 	{
-		InetSocketAddress returnAddress = new InetSocketAddress(InetAddress.getByName("localhost"), server.getServerPort());
+		InetSocketAddress returnAddress = server.getListenAddresses(new AddressFilter()
+		{
+			
+			@Override
+			public boolean add(InetSocketAddress checkAddress)
+			{
+				return (!(checkAddress instanceof AFUNIXSocketAddress));
+			}
+		})[0];
 		return returnAddress;
 	}
 	
@@ -84,6 +93,20 @@ public class RemoteServerTest extends iGeekTestCase
 		client.close();
 	}
 	
+	public void testReconnect() throws Exception
+	{
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress());
+		assertEquals(3, client.add(1, 2));
+		Future<Void>sleepFuture = client.sleep(10);
+		sleepFuture.get();
+		client.close();
+		
+		client = new TestRemoteClient(getConnectAddress());
+		assertEquals(3, client.add(1, 2));
+		sleepFuture = client.sleep(10);
+		sleepFuture.get();
+		client.close();
+	}
 	class SleepCompletionMonitor implements AsyncCompletion<Void, Integer>
 	{
 		private ArrayList<Integer>completionList = new ArrayList<Integer>();
@@ -141,5 +164,48 @@ public class RemoteServerTest extends iGeekTestCase
 			caught = true;
 		}
 		assertTrue(caught);
+	}
+	
+	public void testBulkData() throws Exception
+	{
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress());
+		byte [] bulkData = new byte[1024*1024];
+		ByteBuffer bulkDataByteBuffer = ByteBuffer.wrap(bulkData);
+		client.bulkData(bulkDataByteBuffer);
+		for (int curCheckByteNum = 0; curCheckByteNum < bulkData.length; curCheckByteNum++)
+		{
+			assertEquals('A', bulkData[curCheckByteNum]);
+		}
+	}
+	public static final int kPerfRuns = 10000;
+	public void testBasicPerfAsync() throws Exception
+	{
+		TestRemoteClient client = new TestRemoteClient(getConnectAddress());
+		AsyncCompletion<Integer, Void>addCompletion = new AsyncCompletion<Integer, Void>()
+		{
+
+			@Override
+			public void completed(Integer result, Void attachment)
+			{
+				assertEquals(3, (int)result);
+			}
+
+			@Override
+			public void failed(Throwable exc, Void attachment)
+			{
+				// TODO Auto-generated method stub
+				
+			}
+		};
+		
+		Log4JStopWatch syncLoopWatch = new Log4JStopWatch("basicPerfTestSync");
+		for (int runNum = 0; runNum < kPerfRuns; runNum++)
+		{
+			client.addAsync(1, 2, addCompletion, null);
+		}
+		syncLoopWatch.stop();
+		System.out.println("Executed "+kPerfRuns+" in "+syncLoopWatch.getElapsedTime()+" ms, "+
+				((double)kPerfRuns/((double)syncLoopWatch.getElapsedTime()/1000.0))+" calls/sec (async)");
+		client.close();
 	}
 }

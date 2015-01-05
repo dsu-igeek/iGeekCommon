@@ -95,9 +95,4 @@ public class MacOSXDate extends UnixDate
 			BitTwiddle.longToNativeByteArray(nSecs, outputArray, offset+8);
 		}
 	}
-
-	public boolean equals(Object obj)
-	{
-		return obj instanceof MacOSXDate && getTime() == ((MacOSXDate) obj).getTime();
-	}
 }

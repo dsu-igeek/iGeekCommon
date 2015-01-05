@@ -17,66 +17,29 @@
 package com.igeekinc.util;
 
 import junit.framework.Test;
+import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import com.igeekinc.util.datadescriptor.BasicDataDescriptorTest;
-import com.igeekinc.util.datadescriptor.CompositeDataDescriptorTest;
-import com.igeekinc.util.formats.splitfile.SplitFileOutputStreamTest;
-import com.igeekinc.util.objectcache.LRUQueueTest;
-import com.igeekinc.util.rules.IncludeExcludeRuleTest;
-import com.igeekinc.util.rules.RulesTest;
-import com.igeekinc.util.rules.XMLRuleEncodingDecodingTest;
-import com.igeekinc.util.xmlserial.XMLDocSerializerTest;
-import com.igeekinc.util.xmlserial.XMLSerializableIntegerTest;
-import com.igeekinc.util.xmlserial.XMLToObjectHandlerTest;
-import com.igeekinc.util.xmlserial.serializers.ArraySerializeHandlerTest;
-import com.igeekinc.util.xmlserial.serializers.FilePathSerializerHandlerTest;
+import com.igeekinc.testutils.AllTestsBase;
 
 
-public class AllTests
+public class AllTests extends AllTestsBase
 {
-    public static Test suite()
-    {
-        TestSuite suite = new TestSuite("Test for com.igeekinc.util");
-        //$JUnit-BEGIN$
-        //suite.addTestSuite(SimpleFSTest.class);
-        suite.addTestSuite(DateComparatorTest.class);
-        suite.addTestSuite(AES.class);
-        suite.addTestSuite(XMLUtilsTest.class);
-        //suite.addTestSuite(SystemTest.class);
-        //suite.addTestSuite(SystemInfoTest.class);
-        suite.addTestSuite(EncryptedFileFormatTest.class);
-        suite.addTestSuite(EventDeliverySupportTest.class);
-        suite.addTestSuite(FileCopyTest.class);
-        suite.addTestSuite(BufferQueueTest.class);
-        suite.addTestSuite(EncryptionKeysTest.class);
-        suite.addTestSuite(FilePathTest.class);
-        //suite.addTestSuite(CompletionEstimatorTest.class);
-        suite.addTestSuite(SHA1HashIDTest.class);
-        suite.addTestSuite(BitTwiddleTest.class);
-        suite.addTestSuite(MessageFormatTest.class);
-        
-        suite.addTestSuite(SplitFileOutputStreamTest.class);
-        
-        suite.addTestSuite(LRUQueueTest.class);
-        
-        
-        suite.addTestSuite(IncludeExcludeRuleTest.class);
-        suite.addTestSuite(RulesTest.class);
-        suite.addTestSuite(XMLRuleEncodingDecodingTest.class);
-        
-        
-        suite.addTestSuite(XMLDocSerializerTest.class);
-        suite.addTestSuite(XMLSerializableIntegerTest.class);
-        suite.addTestSuite(XMLToObjectHandlerTest.class);
-        
-        
-        suite.addTestSuite(ArraySerializeHandlerTest.class);
-        suite.addTestSuite(FilePathSerializerHandlerTest.class);
-        
-        suite.addTestSuite(BasicDataDescriptorTest.class);
-        suite.addTestSuite(CompositeDataDescriptorTest.class);
-        //$JUnit-END$
-        return suite;
-    }
+	public static Test suite()
+	{
+		TestSuite suite = new TestSuite("Tests for com.igeekinc.util");
+		String [] excludeTests = new String []{
+				"com.igeekinc.util.macos.*",
+				"com.igeekinc.util.windows.*",
+				"com.igeekinc.util.linux.*",
+				"com.igeekinc.util.VerySimpleTest",
+				"com.igeekinc.junitext.*"
+		};
+
+		String packageName = "com.igeekinc.util";
+		Class<TestCase> baseClass = TestCase.class;
+		buildSuite(suite, excludeTests, packageName, baseClass);
+
+		return suite;
+	}
 }

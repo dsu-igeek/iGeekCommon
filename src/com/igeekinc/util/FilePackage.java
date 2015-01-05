@@ -91,7 +91,7 @@ public class FilePackage implements Serializable
 		{
 			Logger.getLogger(FilePackage.class).error(new ErrorLogMessage("Caught exception"), e);
 		}
-		throw new InternalError("Could not allocate FilePackage");
+		throw new InternalError("Could not allocate FilePackage for "+filePath);
 	}
 	
 	public static FilePackage getFilePackage(FilePath filePath, ClientFile sourceFile) throws ForkNotFoundException, IOException
@@ -113,9 +113,10 @@ public class FilePackage implements Serializable
 			Logger.getLogger(FilePackage.class).error(new ErrorLogMessage("Caught exception"), e);
 		} catch (InvocationTargetException e)
 		{
-			Logger.getLogger(FilePackage.class).error(new ErrorLogMessage("Caught exception"), e);
+			if (e.getCause() instanceof IOException)
+				throw (IOException)e.getCause();
 		}
-		throw new InternalError("Could not allocate FilePackage");
+		throw new InternalError("Could not allocate FilePackage for "+filePath);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -136,6 +137,8 @@ public class FilePackage implements Serializable
 			HashMap<String, ? extends DataDescriptor> extendedAttributeData,
 			ClientFileMetaData metaData)
 	{
+		if (!filePath.isAbsolute)
+			throw new IllegalArgumentException("filePath must be absolute");
 		this.filePath = filePath;
 		this.forkData = (HashMap<String, ? extends DataDescriptor>) forkData.clone();
 		this.extendedAttributeData = (HashMap<String, ? extends DataDescriptor>) extendedAttributeData.clone();
@@ -206,5 +209,10 @@ public class FilePackage implements Serializable
 	public FilePath getFilePath()
 	{
 		return filePath;
+	}
+	
+	public String toString()
+	{
+		return filePath.toString();
 	}
 }

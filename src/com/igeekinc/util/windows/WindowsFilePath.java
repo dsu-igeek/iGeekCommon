@@ -20,9 +20,6 @@ import com.igeekinc.util.FilePath;
 
 public class WindowsFilePath extends FilePath 
 {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 2051855680582454475L;
 	private char [] parsingSeparators={'\\', '/'};	// Accept \ and / as separators
 	private String separator="\\";	// Only output \'s
@@ -58,14 +55,13 @@ public class WindowsFilePath extends FilePath
 
 	}
 
-	public WindowsFilePath(String []components, boolean normalize)
+	public WindowsFilePath(String []components, boolean absolute)
 	{
-		this(components, 0, components.length, normalize);
+		this(components, 0, components.length, absolute);
 	}
 	
-	public WindowsFilePath(String [] components, int offset, int length, boolean normalize)
+	public WindowsFilePath(String [] components, int offset, int length, boolean absolute)
 	{
-		boolean absolute = false;
 		if (offset == 0 && length > 0 && components[offset].indexOf(':') > 0)
 		{
 			int colonPos = components[offset].indexOf(':');
@@ -75,6 +71,9 @@ public class WindowsFilePath extends FilePath
 		init(components, offset, length, absolute);
 	}
 
+	private WindowsFilePath()
+	{
+	}
 	/**
 	 * @return Returns the driveLetter.
 	 */
@@ -118,4 +117,13 @@ public class WindowsFilePath extends FilePath
 		return returnBuf.toString();
 	}
 
+	@Override
+	public FilePath makeAbsolute()
+	{
+		if (isAbsolute)
+			return this;
+		WindowsFilePath returnPath = new WindowsFilePath();
+		returnPath.init(pathComponents, offset, count, true);
+		return returnPath;
+	}
 }

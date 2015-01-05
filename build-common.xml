@@ -18,7 +18,7 @@
 			</classpath>
 		</taskdef>
 	</target>
-	<!-- This should be overriden in whatever file is calling this one.  We leave it here to maek Eclipse shut up-->
+	<!-- This should be overriden in whatever file is calling this one.  We leave it here to make Eclipse shut up-->
 
 	<target name="localProperties"/>
 	<target name="baseDefines">

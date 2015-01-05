@@ -27,7 +27,6 @@ public class SleepCommand extends CommandMessage
 
 	public SleepCommand(long timeToSleep)
 	{
-		super(TestRemoteServer.TestCommand.kSleepCommand.commandNum);
 		this.timeToSleep = timeToSleep;
 	}
 	
@@ -42,5 +41,11 @@ public class SleepCommand extends CommandMessage
 	public long getTimeToSleep()
 	{
 		return timeToSleep;
+	}
+
+	@Override
+	protected int getInitCommandCode()
+	{
+		return TestRemoteServer.TestCommand.kSleepCommand.commandNum;
 	}
 }

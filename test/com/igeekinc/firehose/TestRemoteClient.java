@@ -16,21 +16,18 @@
  
 package com.igeekinc.firehose;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLContext;
 
 import org.apache.log4j.Logger;
-import org.newsclub.net.unix.AFUNIXSocket;
 import org.newsclub.net.unix.AFUNIXSocketAddress;
-import org.newsclub.net.unix.AFUNIXSocketChannelImpl;
 
 import com.igeekinc.firehose.TestRemoteServer.TestCommand;
 import com.igeekinc.util.async.AsyncCompletion;
@@ -39,71 +36,84 @@ import com.igeekinc.util.logging.ErrorLogMessage;
 
 public class TestRemoteClient extends FirehoseClient
 {
+	private SSLContext sslContext;
 	public TestRemoteClient(InetSocketAddress address) throws IOException
 	{
-		socketChannel = SocketChannel.open(address);
-		socket = socketChannel.socket();
-		createResponseLoop();
+		FirehoseInitiator.initiateClient(address, this);
 	}
 	
-	public TestRemoteClient(InetSocketAddress address, SSLEngine sslEngine) throws IOException
+	public TestRemoteClient(InetSocketAddress address, SSLContext sslContext) throws IOException
 	{
-		socketChannel = SocketChannel.open(address);
-		socket = socketChannel.socket();
-		createResponseLoop(sslEngine);
+		this.sslContext = sslContext;
+		FirehoseInitiator.initiateClient(address, this, new SSLSetup()
+		{
+			
+			@Override
+			public boolean useSSL()
+			{
+				return true;
+			}
+			
+			@Override
+			public SSLContext getSSLContextForSocket(SocketChannel socket)
+			{
+				return TestRemoteClient.this.sslContext;
+			}
+		});
+
 	}
 	
 	public TestRemoteClient(AFUNIXSocketAddress address) throws IOException
 	{
-		socketChannel = AFUNIXSocketChannelImpl.open(address);
-		socket = socketChannel.socket();
-		createResponseLoop();
+		FirehoseInitiator.initiateClient(address, this);
 	}
 	
-	public TestRemoteClient(AFUNIXSocketAddress address, SSLEngine sslEngine) throws IOException
+	public TestRemoteClient(AFUNIXSocketAddress address, SSLContext sslContext) throws IOException
 	{
-		socketChannel = AFUNIXSocketChannelImpl.open(address);
-		socket = socketChannel.socket();
-		createResponseLoop(sslEngine);
+		this.sslContext = sslContext;
+		FirehoseInitiator.initiateClient(address, this, new SSLSetup()
+		{
+			
+			@Override
+			public boolean useSSL()
+			{
+				return true;
+			}
+			
+			@Override
+			public SSLContext getSSLContextForSocket(SocketChannel socket)
+			{
+				return TestRemoteClient.this.sslContext;
+			}
+		});
 	}
 	
-	public TestRemoteClient(SocketChannel channel) throws IOException
-	{
-		socketChannel = channel;
-		socket = socketChannel.socket();
-		createResponseLoop();
-	}
-	
-	public TestRemoteClient(SocketChannel channel, SSLEngine sslEngine) throws IOException
-	{
-		socketChannel = channel;
-		socket = socketChannel.socket();
-		createResponseLoop(sslEngine);
-	}
-	
-	public TestRemoteClient(File localSocketPath) throws IOException
-	{
-		//AFUNIXSocket socket = AFUNIXSocket.connectTo(addr)
-	}
 	public int add(int value1, int value2) throws IOException
 	{
-		AddCommand addCommand = new AddCommand(value1, value2);
 		ComboFutureBase<Integer>future = new ComboFutureBase<Integer>();
-		sendMessage(addCommand, future);
+		addAsync(value1, value2, future, null);
 		try
 		{
 			return future.get();
 		} catch (Exception e)
 		{
+			Logger.getLogger(getClass()).warn("Got exception", e);
 			throw new IOException("Could not execute");
 		}
+	}
+
+	public <A> void addAsync(int value1, int value2,
+			AsyncCompletion<Integer, A> future, A attachment) throws IOException
+	{
+		AddCommand addCommand = new AddCommand(value1, value2);
+		sendMessage(addCommand, future, attachment);
 	}
 
 	public Future<Void> sleep(long timeToSleep) throws IOException
 	{
 		SleepCommand sleepCommand = new SleepCommand(timeToSleep);
 		ComboFutureBase<Void>future = new ComboFutureBase<Void>();
-		sendMessage(sleepCommand, future);
+		sendMessage(sleepCommand, future, null);
 		return future;
 	}
 	
@@ -111,7 +121,7 @@ public class TestRemoteClient extends FirehoseClient
 	{
 		FailWithIOErrorCommand failCommand = new FailWithIOErrorCommand(dummy);
 		ComboFutureBase<Void>future = new ComboFutureBase<Void>();
-		sendMessage(failCommand, future);
+		sendMessage(failCommand, future, null);
 		try
 		{
 			future.get();
@@ -121,8 +131,6 @@ public class TestRemoteClient extends FirehoseClient
 			Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
 		} catch (ExecutionException e)
 		{
-			// TODO Auto-generated catch block
-			Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
 			if (e.getCause() instanceof IOException)
 				throw (IOException)e.getCause();
 			throw new InternalError("Unexpected exception");
@@ -132,17 +140,23 @@ public class TestRemoteClient extends FirehoseClient
 	{
 		SleepCommand sleepCommand = new SleepCommand(timeToSleep);
 		ComboFutureBase<Void>future = new ComboFutureBase<Void>(completionHandler, attachment);
-		sendMessage(sleepCommand, future);
+		sendMessage(sleepCommand, future, null);
 	}
 
-	@Override
-	protected Class<? extends CommandMessage> getClassForCommandCode(
-			int payloadType)
-	{
-		// TODO Auto-generated method stub
-		return null;
+	public void bulkData(ByteBuffer bulkDataByteBuffer) throws IOException
+	{		
+		BulkDataCommand bulkDataCommand = new BulkDataCommand(bulkDataByteBuffer.remaining());
+		ComboFutureBase<Void>future = new ComboFutureBase<Void>();
+		sendMessage(bulkDataCommand, bulkDataByteBuffer, future, null);
+		try
+		{
+			future.get();
+		} catch (Exception e)
+		{
+			throw new IOException("Could not execute");
+		}
 	}
-
+	
 	@Override
 	protected Class<? extends Object> getReturnClassForCommandCode(
 			int payloadType)
@@ -152,6 +166,8 @@ public class TestRemoteClient extends FirehoseClient
 		case kAddCommand:
 			return Integer.class;
 		case kSleepCommand:
+			return Void.class;
+		case kBulkDataCommand:
 			return Void.class;
 		default:
 			throw new IllegalArgumentException();

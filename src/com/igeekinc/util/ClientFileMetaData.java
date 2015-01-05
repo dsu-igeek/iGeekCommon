@@ -21,6 +21,7 @@ import java.util.Date;
 
 import com.igeekinc.util.exceptions.ForkNotFoundException;
 import com.igeekinc.util.exceptions.UserNotFoundException;
+import com.igeekinc.util.msgpack.ClientFileMetaDataMsgPack;
 
 public abstract class ClientFileMetaData implements Cloneable, Serializable
 {
@@ -101,4 +102,19 @@ public abstract class ClientFileMetaData implements Cloneable, Serializable
 	public abstract String getSymlinkTarget();
 
 	public abstract boolean isRegularFile();
+	
+	public boolean isSocket()
+	{
+		return false;
+	}
+	
+	public boolean isPipe()
+	{
+		return false;
+	}
+	
+	/*
+	 * Get the MessagePack object for this meta data
+	 */
+	public abstract ClientFileMetaDataMsgPack getMDMsgPack();
 }

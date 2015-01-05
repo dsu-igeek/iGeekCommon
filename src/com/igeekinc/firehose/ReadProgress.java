@@ -20,13 +20,36 @@ import java.nio.ByteBuffer;
 
 class ReadProgress
 {
-	private ByteBuffer headerByteBuffer, payloadByteBuffer;
+	private ByteBuffer headerByteBuffer, payloadByteBuffer, bulkDataByteBuffer;
 	public enum RequestState
 	{
 		kReadingHeader,
 		kReadingPayload,
+		kReadingBulkData,
 		kProcessing,
-		kError
+		kError;
+
+		@Override
+		public String toString()
+		{
+			switch(this)
+			{
+			case kError:
+				return "Error";
+			case kProcessing:
+				return "Processing";
+			case kReadingBulkData:
+				return "ReadingBulkData";
+			case kReadingHeader:
+				return "ReadingHeader";
+			case kReadingPayload:
+				return "ReadingPayload";
+			default:
+				return "???";
+			}
+		}
+		
+		
 	}
 	
 	private RequestState requestState = RequestState.kReadingHeader;
@@ -35,6 +58,7 @@ class ReadProgress
 	private int		commandCode;
 	private long	commandSequence;
 	private long	payloadSize;
+	private long	bulkDataSize;
 	
 	public ReadProgress()
 	{
@@ -66,6 +90,16 @@ class ReadProgress
 	public void setPayloadByteBuffer(ByteBuffer payloadByteBuffer)
 	{
 		this.payloadByteBuffer = payloadByteBuffer;
+	}
+	
+	public ByteBuffer getBulkDataByteBuffer()
+	{
+		return bulkDataByteBuffer;
+	}
+	
+	public void setBulkDataByteBuffer(ByteBuffer bulkDataByteBuffer)
+	{
+		this.bulkDataByteBuffer = bulkDataByteBuffer;
 	}
 	
 	public short getCommandType()
@@ -108,8 +142,25 @@ class ReadProgress
 		this.payloadSize = payloadSize;
 	}
 	
+	public long getBulkDataSize()
+	{
+		return bulkDataSize;
+	}
+
+
+	public void setBulkDataSize(long bulkDataSize)
+	{
+		this.bulkDataSize = bulkDataSize;
+	}
+
+
 	public void reset()
 	{
 		requestState = RequestState.kReadingHeader;
+	}
+	
+	public String toString()
+	{
+		return "State: "+requestState+" "+"commandType = "+commandType;
 	}
 }

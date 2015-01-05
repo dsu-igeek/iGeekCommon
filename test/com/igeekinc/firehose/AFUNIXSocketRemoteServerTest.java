@@ -18,12 +18,10 @@ package com.igeekinc.firehose;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.channels.ServerSocketChannel;
 import java.util.ArrayList;
 import java.util.concurrent.Future;
 
 import org.apache.log4j.Level;
-import org.newsclub.net.unix.AFUNIXServerSocketChannelImpl;
 import org.newsclub.net.unix.AFUNIXSocketAddress;
 import org.perf4j.log4j.Log4JStopWatch;
 
@@ -45,15 +43,21 @@ public class AFUNIXSocketRemoteServerTest extends iGeekTestCase
 	protected void setUp() throws Exception
 	{
 		super.setUp();
-		ServerSocketChannel serverChannel = AFUNIXServerSocketChannelImpl.open(getConnectAddress());
-		server = new TestRemoteServer(serverChannel, null);
+		AFUNIXSocketAddress connectAddress = getConnectAddress();
+
+		File socketFile = new File(((AFUNIXSocketAddress)connectAddress).getSocketFile());
+		if (socketFile.exists())
+		{
+			socketFile.delete();
+		}
+		server = new TestRemoteServer(connectAddress, null);
 	}
 	
 	@Override
 	protected void tearDown() throws Exception
 	{
 		super.tearDown();
-		server.shutdown();
+		server.targetShutdown();
 	}
 	public AFUNIXSocketAddress getConnectAddress() throws IOException
 	{

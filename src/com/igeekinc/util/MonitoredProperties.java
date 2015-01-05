@@ -69,7 +69,7 @@ public class MonitoredProperties extends Properties
 			oldValue = get(key);
 			returnObject = super.put(key, value);
 		}
-		changeModel.firePropertyChange(this, (String)key, oldValue, value);
+		changeModel.firePropertyChangeAsync(this, (String)key, oldValue, value);
 		return returnObject;
 	}
 
@@ -92,6 +92,16 @@ public class MonitoredProperties extends Properties
 	public void addPropertyChangeListener(PropertyChangeListener newListener)
 	{
 		changeModel.addPropertyChangeListener(newListener);
+	}
+	
+	public void removePropertyChangeListener(PropertyChangeListener removeListener)
+	{
+		changeModel.removePropertyChangeListener(removeListener);
+	}
+	
+	public void removePropertyChangeListener(String propertyName, PropertyChangeListener removeListener)
+	{
+		changeModel.removePropertyChangeListener(propertyName, removeListener);
 	}
 	
 	public synchronized void replaceProperties(Properties newProperties)

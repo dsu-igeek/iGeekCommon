@@ -20,40 +20,16 @@ import com.igeekinc.junitext.iGeekTestCase;
 
 public class CompletionEstimatorTest extends iGeekTestCase
 {
-	public void testErrors()
-	{
-		boolean illegalArgExceptionCaught = false;
-        CompletionEstimator testEstimator;
-		try
-		{
-			testEstimator = new CompletionEstimator(1, new long [] {1000, 500});
-		}
-		catch (IllegalArgumentException e)
-		{
-			illegalArgExceptionCaught = true;
-		}
-		assertTrue(illegalArgExceptionCaught);
-		illegalArgExceptionCaught = false;
-		testEstimator = new CompletionEstimator(1, new long [] {1000});
-		long [] itemsCompleted = {1, 2};
-		try
-		{
-			testEstimator.getNextEstimate(itemsCompleted, 0);
-		}
-		catch (IllegalArgumentException e)
-		{
-			illegalArgExceptionCaught = true;
-		}
-		assertTrue(illegalArgExceptionCaught);
-	}
-    public void testSingleRateFakeTime()
+    private static final int	kTotalMS	= 10000000;
+
+	public void testSingleRateFakeTime()
     {
-        CompletionEstimator testEstimator = new CompletionEstimator(1, new long [] {1000});
+        CompletionEstimator testEstimator = new CompletionEstimator(new long [] {kTotalMS/1000});
         long [] itemsCompleted = {1};
         testEstimator.getNextEstimate(itemsCompleted, 0);
-        for (long curTime = 1000; curTime < 1000000; curTime+= 1000)
+        for (long curTime = 1000; curTime < kTotalMS; curTime+= 1000)
         {
-            long timeExpected = 1000000 - (curTime+1000);   // One item was completed at time 0
+            long timeExpected = kTotalMS - (curTime+1000);   // One item was completed at time 0
             long timeEstimated = testEstimator.getNextEstimate(itemsCompleted, curTime);
             if (Math.abs(timeExpected - timeEstimated) > 2000)    // Allow max drift of 2000
                 assertEquals(timeExpected/1000, timeEstimated/1000);
@@ -62,28 +38,29 @@ public class CompletionEstimatorTest extends iGeekTestCase
     
     public void testDoubleRateFakeTime()
     {
-        CompletionEstimator testEstimator = new CompletionEstimator(2, new long [] {1000, 1000});
+        CompletionEstimator testEstimator = new CompletionEstimator(new long [] {kTotalMS/1000, kTotalMS/1000});
         long [] itemsCompleted = {1,2};
         testEstimator.getNextEstimate(itemsCompleted, 0);
-        for (long curTime = 1000; curTime < 1000000; curTime+= 1000)
+        for (long curTime = 1000; curTime < kTotalMS; curTime+= 1000)
         {
-            long timeExpected = 1000000 - (curTime+1000);   // One item was completed at time 0
+            long timeExpected = kTotalMS - (curTime+1000);   // One item was completed at time 0
             long timeEstimated = testEstimator.getNextEstimate(itemsCompleted, curTime);
             if (Math.abs(timeExpected - timeEstimated) > 2000)    // Allow max drift of 2000
                 assertEquals(timeExpected/1000, timeEstimated/1000);
         }
     }
     
+    public static final int kRealTimeMS = 100*1000;
     public void testSingleRateRealTime()
     throws Exception
     {
-        CompletionEstimator testEstimator = new CompletionEstimator(1, new long [] {100});
+        CompletionEstimator testEstimator = new CompletionEstimator(new long [] {kRealTimeMS/1000});
         long [] itemsCompleted = {1};
         testEstimator.getNextEstimate(itemsCompleted);
-        for (long curTime = 1000; curTime < 100000; curTime+= 1000)
+        for (long curTime = 1000; curTime < kRealTimeMS; curTime+= 1000)
         {
             Thread.sleep(1000);
-            long timeExpected = 100000 - (curTime+1000);   // One item was completed at time 0
+            long timeExpected = kRealTimeMS - (curTime+1000);   // One item was completed at time 0
             long timeEstimated = testEstimator.getNextEstimate(itemsCompleted);
             if (Math.abs(timeExpected - timeEstimated) > 2000)    // Allow max drift of 2000
                 assertEquals(timeExpected/1000, timeEstimated/1000);

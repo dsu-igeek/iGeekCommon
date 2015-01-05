@@ -94,11 +94,5 @@ public UnixDate()
     javaTime += javaNSecs/1000000; // Divide nanoseconds (billionths) by 1000000 (million) to get milliseconds (thousandths)
     return javaTime;
   }
-  
-  public boolean equals(Object obj)
-  {
-      return obj instanceof UnixDate && getTime() == ((UnixDate) obj).getTime();
-  }
-
 }
 
