@@ -64,6 +64,11 @@ public abstract class PreferencesManager
 		return singleton.getPreferencesDirInternal();
 	}
 	
+	public static File getUserPreferencesDir()
+	{
+		return singleton.getUserPreferencesDirInternal();
+	}
+	
 	public static void addPreferencesFile(File preferencesFile) throws IOException
 	{
 		singleton.addPreferencesFileInternal(preferencesFile);
@@ -97,6 +102,8 @@ public abstract class PreferencesManager
 	
 	protected abstract File getPreferencesFileInternal();
 	protected abstract File getPreferencesDirInternal();
+	protected abstract File getUserPreferencesDirInternal();
+	
 	protected abstract void initPreferencesInternal(CheckCorrectDispatchThread dispatcher) throws IOException;
 
 	public static void storeProperties() throws IOException
