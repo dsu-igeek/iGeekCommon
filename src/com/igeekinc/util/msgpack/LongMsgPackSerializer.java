@@ -13,31 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
-package com.igeekinc.firehose;
+package com.igeekinc.util.msgpack;
 
-public class ReceivedResponse
+import org.msgpack.annotation.Message;
+
+@Message
+public class LongMsgPackSerializer implements MsgPackSerializer<Long>
 {
-	private CommandResult commandResult;
-	private UnsolicitedResponse unsolicitedResponse;
-	
-	public ReceivedResponse(CommandResult commandResult)
+	public Long longVal;
+	public LongMsgPackSerializer()
 	{
-		this.commandResult = commandResult;
+		// For message pack
 	}
 	
-	public ReceivedResponse(UnsolicitedResponse unsolicitedResponse)
+	public LongMsgPackSerializer(Long longVal)
 	{
-		this.unsolicitedResponse = unsolicitedResponse;
+		this.longVal = longVal;
 	}
-
-	public CommandResult getCommandResult()
+	
+	@Override
+	public Long getObject()
 	{
-		return commandResult;
-	}
-
-	public UnsolicitedResponse getUnsolicitedResponse()
-	{
-		return unsolicitedResponse;
+		return longVal;
 	}
 }

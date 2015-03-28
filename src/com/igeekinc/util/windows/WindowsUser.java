@@ -20,13 +20,13 @@ import java.io.File;
 
 import com.igeekinc.util.User;
 
-public class Windows2000User extends User
+public class WindowsUser extends User
 {
   /**
 	 * 
 	 */
 	private static final long serialVersionUID = -7172211261090075960L;
-public Windows2000User(String inUserName)
+public WindowsUser(String inUserName)
   {
     userName = inUserName;
   }
@@ -39,9 +39,9 @@ public Windows2000User(String inUserName)
   {
     if (checkObject == null)
       return false;
-    if (checkObject.getClass() != Windows2000User.class)
+    if (checkObject.getClass() != WindowsUser.class)
       return false;
-    Windows2000User checkUser = (Windows2000User)checkObject;
+    WindowsUser checkUser = (WindowsUser)checkObject;
     if (checkUser.userName.equals(userName))
       return true;
     return false;

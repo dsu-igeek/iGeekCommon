@@ -16,16 +16,39 @@
  
 package com.igeekinc.firehose;
 
+import com.igeekinc.util.datadescriptor.DataDescriptor;
+
+/**
+ * CommandResult is returned from the command processing code in the server to the Firehose framework.  It contains
+ * all of the information to be returned to the client
+ * @author David L. Smith-Uchida
+ *
+ */
 public class CommandResult
 {
 	private int resultCode;
 	private Object resultData;	// This should be an object containing all of the result data suitable for serialization via msgpack
+	private DataDescriptor bulkData;
+	private long bulkDataOffset, bulkDataLength;
 	
 	public CommandResult(int resultCode, Object resultData)
+	{
+		this(resultCode, resultData, null,0 ,0);
+	}
+	
+	public CommandResult(int resultCode, Object resultData, DataDescriptor bulkData)
+	{
+		this(resultCode, resultData, bulkData, 0, bulkData.getLength());
+	}
+	
+	public CommandResult(int resultCode, Object resultData, DataDescriptor bulkData, long bulkDataOffset, long bulkDataLength)
 	{
 		super();
 		this.resultCode = resultCode;
 		this.resultData = resultData;
+		this.bulkData = bulkData;
+		this.bulkDataOffset = bulkDataOffset;
+		this.bulkDataLength = bulkDataLength;
 	}
 
 	public int getResultCode()
@@ -38,4 +61,18 @@ public class CommandResult
 		return resultData;
 	}
 	
+	public DataDescriptor getBulkData()
+	{
+		return bulkData;
+	}
+
+	public long getBulkDataOffset()
+	{
+		return bulkDataOffset;
+	}
+
+	public long getBulkDataLength()
+	{
+		return bulkDataLength;
+	}
 }

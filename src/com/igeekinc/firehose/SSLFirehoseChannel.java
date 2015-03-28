@@ -17,12 +17,21 @@ package com.igeekinc.firehose;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.IllegalBlockingModeException;
 import java.nio.channels.SocketChannel;
+import java.security.cert.Certificate;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLEngineResult.Status;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLPeerUnverifiedException;
+
+import org.apache.log4j.Logger;
+import org.perf4j.log4j.Log4JStopWatch;
+
+import com.igeekinc.util.logging.ErrorLogMessage;
 
 /**
  * SSLFirehoseChannel is an SSL encrypted FirehoseChannel
@@ -34,51 +43,109 @@ public class SSLFirehoseChannel extends FirehoseChannel
 {
 	private SSLEngine	sslEngine;
 	private boolean server;
-	private ByteBuffer decryptedInputBuffer;
-	public SSLFirehoseChannel(int channelNum, SocketChannel socketChannel, SSLEngine sslEngine, boolean server) throws IOException
+	private ByteBuffer decryptedInputBuffer; 
+	private ByteBuffer encryptedBuffer = ByteBuffer.allocate(kSSLMaxWrite + 64);
+	private SSLSetup sslSetup;	// We hang onto this for clients to use
+	public SSLFirehoseChannel(int channelNum, SocketChannel socketChannel, SSLEngine sslEngine, SSLSetup sslSetup, boolean server) throws IOException
 	{
 		super(channelNum, socketChannel);
-		socketChannel.configureBlocking(true);
+		boolean wasBlocking = false;
+		if (socketChannel.isBlocking())
+		{
+			socketChannel.configureBlocking(false);
+			wasBlocking = true;
+		}
 		this.sslEngine = sslEngine;
+		this.sslSetup = sslSetup;
 		this.server = server;
 		decryptedInputBuffer = ByteBuffer.allocate(super.getInputBuffer().capacity() + 64);
 		
-		ByteBuffer sourceBuffer = ByteBuffer.wrap("Firehose".getBytes());
-		ByteBuffer encryptedSourceBuffer = ByteBuffer.allocate(64 * 1024);
-		ByteBuffer encryptedReceiveBuffer = ByteBuffer.allocate(64 * 1024);
+		ByteBuffer sendBuffer = ByteBuffer.wrap("Firehose".getBytes());
+		ByteBuffer encryptedSendBuffer = ByteBuffer.allocate(64 * 1024);
 		ByteBuffer receiveBuffer = ByteBuffer.allocate(64 * 1024);
 		
-		boolean handshaking = true;
-		while(handshaking || sourceBuffer.position() < sourceBuffer.limit())
+		handshaking = true;
+		while(handshaking || sendBuffer.position() < sendBuffer.limit())
 		{
-			encryptedSourceBuffer.position(0);
-			encryptedSourceBuffer.limit(encryptedSourceBuffer.capacity());
-			SSLEngineResult result = sslEngine.wrap(sourceBuffer, encryptedSourceBuffer);
+			encryptedSendBuffer.position(0);
+			encryptedSendBuffer.limit(encryptedSendBuffer.capacity());
+			SSLEngineResult result = sslEngine.wrap(sendBuffer, encryptedSendBuffer);
 			logger.debug("wrap status = "+result.getStatus()+" handshake status = "+result.getHandshakeStatus());
 			runDelegatedTasks(result);
-			encryptedSourceBuffer.flip();
-			logger.debug("Sending "+encryptedSourceBuffer);
-			socketChannel.write(encryptedSourceBuffer);
+			encryptedSendBuffer.flip();
+			logger.debug("Sending "+encryptedSendBuffer);
+			int minimumRead = 0;
+			while(encryptedSendBuffer.hasRemaining())
+			{
+				long bytesWritten = super.write(encryptedSendBuffer);
+				if (bytesWritten == 0)
+				{
+					try
+					{
+						Thread.sleep(10);	// No room in the socket output...odd but we need to deal with it
+					}
+					catch (InterruptedException e)
+					{
+						
+					}
+				}
+			}
 			if (result.getHandshakeStatus() != HandshakeStatus.FINISHED)
 			{
 				if (result.getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP)
 				{
-					encryptedReceiveBuffer.position(0);
-					encryptedReceiveBuffer.limit(encryptedReceiveBuffer.capacity());
-					logger.debug("Receiving "+encryptedReceiveBuffer);
-					socketChannel.read(encryptedReceiveBuffer);
-					logger.debug("Received "+encryptedReceiveBuffer);
-					encryptedReceiveBuffer.flip();
-					SSLEngineResult unwrapResult;
+					int timesRead = 0;
+					boolean readMore = false;
 					do
 					{
-						unwrapResult = sslEngine.unwrap(encryptedReceiveBuffer, receiveBuffer);
-						logger.debug("unwrap status = "+unwrapResult.getStatus()+" handshake status = "+unwrapResult.getHandshakeStatus() + "receiveBuffer.position = "+receiveBuffer.position());
+						timesRead++;
+						logger.debug("Receiving SSL handshake data");
+						int bytesAvailable = 0;
+						while (bytesAvailable == 0)
+						{
+							bytesAvailable = super.readNoBlock(minimumRead);
+							if (bytesAvailable == 0)
+							{
+								try
+								{
+									Thread.sleep(10);
+								}
+								catch (InterruptedException e)
+								{
+								}
+							}
+						}
+						logger.debug(bytesAvailable+" bytes available from parent channel");
+						ByteBuffer encryptedProcessBuffer = super.getInputBuffer();
+						SSLEngineResult unwrapResult;
+						do
+						{
+							try
+							{
+								unwrapResult = sslEngine.unwrap(encryptedProcessBuffer, receiveBuffer);
+							} catch (SSLException e)
+							{
+								Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught exception"), e);
+								throw e;
+							}
+							logger.debug("unwrap status = "+unwrapResult.getStatus()+" handshake status = "+unwrapResult.getHandshakeStatus() + "receiveBuffer.position = "+receiveBuffer.position());
 
-						runDelegatedTasks(unwrapResult);
-						if (unwrapResult.getHandshakeStatus() == HandshakeStatus.FINISHED)
-							handshaking = false;
-					} while (encryptedReceiveBuffer.hasRemaining());
+							runDelegatedTasks(unwrapResult);
+							if (unwrapResult.getHandshakeStatus() == HandshakeStatus.FINISHED)
+								handshaking = false;
+							if (unwrapResult.getStatus() == Status.BUFFER_UNDERFLOW)
+							{
+								readMore = true;
+								minimumRead = encryptedProcessBuffer.remaining() + 1;
+								break;
+							}
+							else
+							{
+								minimumRead = 0;
+								readMore = false;
+							}
+						} while (encryptedProcessBuffer.hasRemaining());
+					} while (readMore);
 				}
 			}
 			else
@@ -90,13 +157,23 @@ public class SSLFirehoseChannel extends FirehoseChannel
 		while (receiveBuffer.position() < 8)
 		{
 			logger.debug("Final receive, receiveBuffer.position() = "+receiveBuffer.position());
-			encryptedReceiveBuffer.position(0);
-			encryptedReceiveBuffer.limit(encryptedReceiveBuffer.capacity());
-			logger.debug("Final receiving "+encryptedReceiveBuffer);
-			socketChannel.read(encryptedReceiveBuffer);
-			logger.debug("Final received "+encryptedReceiveBuffer);
-			encryptedReceiveBuffer.flip();
-			SSLEngineResult unwrapResult = sslEngine.unwrap(encryptedReceiveBuffer, receiveBuffer);
+			int bytesAvailable = 0;
+			while (bytesAvailable == 0)
+			{
+				bytesAvailable = super.readNoBlock(sslEngine.getSession().getPacketBufferSize());
+				if (bytesAvailable == 0)
+				{
+					try
+					{
+						Thread.sleep(10);
+					}
+					catch (InterruptedException e)
+					{
+					}
+				}
+			}
+			ByteBuffer encryptedProcessBuffer = super.getInputBuffer();
+			SSLEngineResult unwrapResult = sslEngine.unwrap(encryptedProcessBuffer, receiveBuffer);
 			logger.debug("final unwrap status = "+unwrapResult.getStatus()+" handshake status = "+unwrapResult.getHandshakeStatus()+" receiveBuffer.position = "+receiveBuffer.position());
 			runDelegatedTasks(unwrapResult);
 		}
@@ -113,7 +190,10 @@ public class SSLFirehoseChannel extends FirehoseChannel
 		{
 			decryptedInputBuffer.limit(0);	// Start empty
 		}
-		socketChannel.configureBlocking(false);
+		if (wasBlocking)
+			socketChannel.configureBlocking(true);	// Return it the way we found it
+		if (super.getInputBuffer().remaining() > 0)
+			logger.debug("more decrypted data waiting");
 	}
 
 	public SSLEngine getSSLEngine()
@@ -122,34 +202,88 @@ public class SSLFirehoseChannel extends FirehoseChannel
 	}
 
 	@Override
-	public synchronized int readNoBlock() throws IOException
+	public int readNoBlock(int forceReadAmount) throws IOException
 	{
-		logger.debug("Entering SSLFirehoseChannel readNoBlock");
-		if (!decryptedInputBuffer.hasRemaining())
+		if (getSocketChannel().isBlocking())
+			throw new IllegalBlockingModeException();
+		readLock.lock();
+		try
 		{
-			logger.debug("No input remaining in decryptedInputBuffer");
-			decryptedInputBuffer.position(0);
-			decryptedInputBuffer.limit(decryptedInputBuffer.capacity());
-			int bytesAvailable = super.readNoBlock();
-			logger.debug(bytesAvailable+" bytes available from parent channel");
-			if (bytesAvailable > 0)
+			logger.debug("Entering SSLFirehoseChannel readNoBlock");
+			if (!decryptedInputBuffer.hasRemaining() || decryptedInputBuffer.remaining() < forceReadAmount)
 			{
-				ByteBuffer inputBuffer = super.getInputBuffer();
-				boolean keepUnwrapping = true;
-				while (inputBuffer.hasRemaining())	// 
+				logger.debug("No input remaining in decryptedInputBuffer");
+				decryptedInputBuffer.compact();
+				if (getSocketChannel().isBlocking())
+					logger.debug("readNoBlock called in blocking mode");
+				int bytesAvailable = super.readNoBlock(sslEngine.getSession().getPacketBufferSize());
+				logger.debug(bytesAvailable+" bytes available from parent channel");
+				if (bytesAvailable > 0)
 				{
-					SSLEngineResult engineResult = sslEngine.unwrap(inputBuffer, decryptedInputBuffer);
-					runDelegatedTasks(engineResult);
-					logger.debug("Decrypted "+decryptedInputBuffer+" engineResult = "+engineResult);
-					if (engineResult.getStatus() != Status.OK)
-						keepUnwrapping = false;	// Probably a buffer underflow which means we're expecting more real input
+					ByteBuffer inputBuffer = super.getInputBuffer();
+					while (inputBuffer.hasRemaining())	// 
+					{
+						SSLEngineResult engineResult = sslEngine.unwrap(inputBuffer, decryptedInputBuffer);
+						runDelegatedTasks(engineResult);
+						logger.debug("Decrypted "+decryptedInputBuffer+" engineResult = "+engineResult);
+						if (engineResult.getStatus() == Status.BUFFER_UNDERFLOW)
+						{
+							logger.debug("SSL buffer underflow, exiting with decrypted data");
+							break;
+						}					
+						if (engineResult.getStatus() == Status.BUFFER_OVERFLOW)
+						{
+							logger.debug("SSL buffer overflow, exiting with decrypted data");
+							break;
+						}
+						if (engineResult.getStatus() == Status.CLOSED)
+							throw new IOException("SSL connection closed");
+					}
+
 				}
-				
+				decryptedInputBuffer.flip();
 			}
-			decryptedInputBuffer.flip();
+			logger.debug("Returning "+decryptedInputBuffer.remaining()+" "+super.getInputBuffer().remaining()+" bytes remaing in encrypted buffer");
+			return decryptedInputBuffer.remaining();
 		}
-		logger.debug("Returning "+decryptedInputBuffer.remaining());
-		return decryptedInputBuffer.remaining();
+		finally
+		{
+			readLock.unlock();
+		}
+	}
+
+	@Override
+	public int readNoBlock(ByteBuffer buffer) throws IOException
+	{
+		if (!handshaking)
+		{
+			readLock.lock();
+			try
+			{
+				// Hmmm...well, no way to do an unbuffered read
+				readNoBlock();
+				ByteBuffer sourceBuffer = decryptedInputBuffer;
+				if (sourceBuffer.remaining() > buffer.remaining())
+				{
+					sourceBuffer = sourceBuffer.duplicate();
+					int delta = sourceBuffer.remaining() - buffer.remaining();
+					sourceBuffer.limit(sourceBuffer.limit() - delta);
+					decryptedInputBuffer.position(sourceBuffer.limit());
+				}
+				int startPos = buffer.position();
+				buffer.put(sourceBuffer);
+				int bytesCopied = buffer.position() - startPos;
+				return bytesCopied;
+			}
+			finally
+			{
+				readLock.unlock();
+			}
+		}
+		else
+		{
+			return super.readNoBlock(buffer);
+		}
 	}
 
 	@Override
@@ -159,34 +293,73 @@ public class SSLFirehoseChannel extends FirehoseChannel
 	}
 
 	@Override
-	public synchronized void write(ByteBuffer writeBuf) throws IOException
+	public long write(ByteBuffer writeBuf) throws IOException
 	{
-		write(new ByteBuffer []{writeBuf});
+		return write(new ByteBuffer []{writeBuf});
 	}
 
+	public static final int kSSLMaxWrite = 64 * 1024;
+	private boolean	handshaking;
+
+
 	@Override
-	public synchronized void write(ByteBuffer[] writeBufs) throws IOException
+	public long write(ByteBuffer[] writeBufs) throws IOException
 	{
-		int maxWrite = 64 * 1024;
-		for (ByteBuffer checkBuffer:writeBufs)
+		writeLock.lock();
+		try
 		{
-			if (checkBuffer.limit() > maxWrite)
-				maxWrite += checkBuffer.limit();
-		}
-		ByteBuffer encryptedBuffer = ByteBuffer.allocate(maxWrite + 64);
-		for (ByteBuffer writeBuffer:writeBufs)
-		{
-			while (writeBuffer.hasRemaining())	// There may be some SSL overhead or startup that needs to send 
-												// more encrypted data than there is unencrypted data
+			Log4JStopWatch writeWatch = new Log4JStopWatch("SSLFirehoseChannel.write");
+			encryptedBuffer.clear();
+			long bytesWritten = 0;
+			for (ByteBuffer writeBuffer:writeBufs)
 			{
-				SSLEngineResult result = sslEngine.wrap(writeBuffer, encryptedBuffer);
-				runDelegatedTasks(result);
-				encryptedBuffer.flip();
-				super.write(encryptedBuffer);
-				encryptedBuffer.position(0);
-				encryptedBuffer.limit(encryptedBuffer.capacity());
+				while (writeBuffer.hasRemaining())	// There may be some SSL overhead or startup that needs to send 
+					// more encrypted data than there is unencrypted data
+				{
+					int bytesRequested = writeBuffer.remaining();
+					SSLEngineResult result = sslEngine.wrap(writeBuffer, encryptedBuffer);
+					if (result.getStatus() != Status.OK)
+					{
+						if (result.getStatus() == Status.BUFFER_OVERFLOW)
+							writeAndResetBuffer(encryptedBuffer);
+						else
+							throw new IOException("SSL status = "+result.getStatus()+" cannot write");
+					}
+					int bytesEncrypted = bytesRequested - writeBuffer.remaining();
+					bytesWritten += bytesEncrypted;		// We'll send it all or die trying
+					runDelegatedTasks(result);
+				}
+			}
+			writeAndResetBuffer(encryptedBuffer);
+			writeWatch.stop();
+			return bytesWritten;
+		}
+		finally
+		{
+			writeLock.unlock();
+		}
+	}
+
+	private void writeAndResetBuffer(ByteBuffer writeBuffer) throws IOException
+	{
+		writeBuffer.flip();
+		while (writeBuffer.remaining() > 0)
+		{
+			long encryptedBytesWritten = super.write(writeBuffer);
+			if (encryptedBytesWritten == 0)
+			{
+				// We could try putting the socket into blocking mode but we'll try this for now.
+				try
+				{
+					Thread.sleep(10);
+				} catch (InterruptedException e)
+				{
+					
+				}
 			}
 		}
+		writeBuffer.position(0);
+		writeBuffer.limit(writeBuffer.capacity());
 	}
 
 	private void runDelegatedTasks(SSLEngineResult result)
@@ -210,22 +383,44 @@ public class SSLFirehoseChannel extends FirehoseChannel
     }
 
 	@Override
-	public synchronized void close() throws IOException
+	public void close() throws IOException
 	{
-		sslEngine.closeOutbound();
-		SSLEngineResult.Status status = Status.OK;
-		ByteBuffer sourceBuffer = ByteBuffer.allocate(0);
-		ByteBuffer encryptedBuffer = ByteBuffer.allocate(64*1024);
-		logger.debug("Closing SSLFirehoseChannel");
-		while (status != Status.CLOSED)
+		writeLock.lock();
+		try
 		{
-			SSLEngineResult result = sslEngine.wrap(sourceBuffer, encryptedBuffer);
-			encryptedBuffer.flip();
-			super.write(encryptedBuffer);
-			status = result.getStatus();
+			sslEngine.closeOutbound();
+			SSLEngineResult.Status status = Status.OK;
+			ByteBuffer sourceBuffer = ByteBuffer.allocate(0);
+			ByteBuffer encryptedBuffer = ByteBuffer.allocate(64*1024);
+			logger.debug("Closing SSLFirehoseChannel");
+			while (status != Status.CLOSED)
+			{
+				SSLEngineResult result = sslEngine.wrap(sourceBuffer, encryptedBuffer);
+				encryptedBuffer.flip();
+				super.write(encryptedBuffer);
+				status = result.getStatus();
+			}
+			super.close();
+			logger.debug("SSLFirehoseChannel closed");
 		}
-		super.close();
-		logger.debug("SSLFirehoseChannel closed");
+		finally
+		{
+			writeLock.unlock();
+		}
 	}
 
+	public Certificate [] getPeerCertificates() throws SSLPeerUnverifiedException
+	{
+		return sslEngine.getSession().getPeerCertificates();
+	}
+
+	public Certificate[] getLocalCertificates()
+	{
+		return sslEngine.getSession().getLocalCertificates();
+	}
+
+	public SSLSetup getSSLSetup()
+	{
+		return sslSetup;
+	}
 }
