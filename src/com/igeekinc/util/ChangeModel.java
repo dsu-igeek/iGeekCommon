@@ -198,7 +198,7 @@ public class ChangeModel extends DeferredEventProcessor
     /**
      * Don't call me! - call fireEventOnCorrectThread
      */
-	public void fireEvent(EventObject eventToFire)
+	protected void fireEvent(EventObject eventToFire)
 	{
         PropertyChangeEvent propertyChangeEvent = (PropertyChangeEvent)eventToFire;
         changeSupport.firePropertyChange(propertyChangeEvent);
@@ -207,7 +207,7 @@ public class ChangeModel extends DeferredEventProcessor
 	/**
 	 * Don't call me!
 	 */
-    public void fireVetoableEvent(EventObject eventToFire)
+    protected void fireVetoableEvent(EventObject eventToFire)
     throws PropertyVetoException
     {
         PropertyChangeEvent propertyChangeEvent = (PropertyChangeEvent)eventToFire;

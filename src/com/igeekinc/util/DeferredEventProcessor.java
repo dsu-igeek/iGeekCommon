@@ -166,6 +166,7 @@ public abstract class DeferredEventProcessor
         }
         catch (Throwable t)
         {
+            Logger.getLogger(getClass()).error(new ErrorLogMessage("Caught throwable sending event"), t);
             wrapper.finish(t);
         }
     }
@@ -277,11 +278,10 @@ public abstract class DeferredEventProcessor
         }
     }
     
-    public abstract void fireEvent(EventObject eventToFire);
-    public abstract void fireVetoableEvent(EventObject eventToFire) throws PropertyVetoException;
+    protected abstract void fireEvent(EventObject eventToFire);
+    protected abstract void fireVetoableEvent(EventObject eventToFire) throws PropertyVetoException;
     public abstract void notifyFiringThread();
 
-    @SuppressWarnings("unchecked")
     protected void fireEvent(EventObject fireEvent, Class<? extends EventListener> eventListenerClass, Method dispatchMethod)
     {
          Object[] listeners = otherEventListeners.getListenerList();

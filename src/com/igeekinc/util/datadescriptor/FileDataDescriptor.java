@@ -41,12 +41,12 @@ public class FileDataDescriptor implements DataDescriptor
     
     public FileDataDescriptor(ClientFile sourceFile) throws ForkNotFoundException, IOException
     {
-        this(sourceFile, null, 0L, sourceFile.length());
+        this(sourceFile, "data", 0L, sourceFile.length());
     }
     
     public FileDataDescriptor(ClientFile sourceFile, long offset, long length) throws ForkNotFoundException, IOException
     {
-        this(sourceFile, null, offset, length);
+        this(sourceFile, "data", offset, length);
     }
     
     public FileDataDescriptor(ClientFile sourceFile, String forkName, long offset, long length) throws ForkNotFoundException, IOException
@@ -99,7 +99,7 @@ public class FileDataDescriptor implements DataDescriptor
 			boolean release) throws IOException
 	{
         if (fileChannel == null)
-            fileChannel = new ForkChannel(sourceFile, forkName, false);
+            fileChannel = new ForkChannel(sourceFile, forkName, true, false);
         long fileOffset = offset + srcOffset;
         fileChannel.position(fileOffset);
         return fileChannel.read(destination);
@@ -163,7 +163,7 @@ public class FileDataDescriptor implements DataDescriptor
         try
         {
         	if (fileChannel == null)
-        		fileChannel = new ForkChannel(sourceFile, forkName, false);
+        		fileChannel = new ForkChannel(sourceFile, forkName, true, false);
             if (fileChannel != null)
                 return true;
         } catch (IOException e)

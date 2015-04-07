@@ -28,11 +28,11 @@ public class ForkChannel implements PositionableChannel
     ClientFile file;
     String forkName;
     
-    public ForkChannel(ClientFile file, String forkName, boolean writeable) throws ForkNotFoundException
+    public ForkChannel(ClientFile file, String forkName, boolean noCache, boolean writeable) throws ForkNotFoundException
     {
         this.file = file;
         this.forkName = forkName;
-        wrappedChannel = file.getForkChannel(forkName, writeable);
+        wrappedChannel = file.getForkChannel(forkName, noCache, writeable);
     }
     public int read(ByteBuffer dst) throws IOException
     {
