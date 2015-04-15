@@ -16,6 +16,7 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -23,8 +24,8 @@ import java.util.GregorianCalendar;
 public class DateExactlyRule extends DateRule
 {
 	static final long serialVersionUID = -2367400979314637961L;
-	static MessageFormat modDateFormatter = new MessageFormat(Messages.getString("DateExactlyRule.modTimeIs")); //$NON-NLS-1$
-	static MessageFormat createDateFormatter = new MessageFormat(Messages.getString("DateExactlyRule.createTimeIs")); //$NON-NLS-1$
+	static MessageFormat modDateFormatter = new MessageFormat(_("Files whose last modified time is {0, date,MMMM d, yyyy}")); //$NON-NLS-1$
+	static MessageFormat createDateFormatter = new MessageFormat(_("Files whose creation time is {0, date,MMMM d, yyyy}")); //$NON-NLS-1$
 	
 	public DateExactlyRule(Date equalsDate, int dateField)
 	{

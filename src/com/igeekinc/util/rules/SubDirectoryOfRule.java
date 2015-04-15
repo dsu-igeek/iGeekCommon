@@ -16,6 +16,7 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.io.File;
 import java.text.MessageFormat;
 
@@ -26,8 +27,8 @@ public class SubDirectoryOfRule extends NameRule
 	public static final long serialVersionUID=-8737728500441711260L;
 	File directory;
 	boolean is;
-	MessageFormat areFormatter = new MessageFormat(Messages.getString("SubDirectoryOfRule.filesContainedBy")); //$NON-NLS-1$
-	MessageFormat areNotFormatter = new MessageFormat(Messages.getString("SubDirectoryOfRule.filesNotContainedBy")); //$NON-NLS-1$
+	MessageFormat areFormatter = new MessageFormat(_("Files that are contained by the folder {0}")); //$NON-NLS-1$
+	MessageFormat areNotFormatter = new MessageFormat(_("Files that are not contained by the folder {0}")); //$NON-NLS-1$
 	
 	public SubDirectoryOfRule(File inDirectory, boolean is)
 	{

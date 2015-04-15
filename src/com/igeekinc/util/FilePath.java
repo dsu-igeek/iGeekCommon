@@ -560,4 +560,11 @@ public abstract class FilePath implements Serializable
     }
 
     public abstract FilePath makeAbsolute();
+
+	public boolean isRoot()
+	{
+		if (isAbsolute && getNumComponents() <= 1)
+			return true;
+		return false;
+	}
 }

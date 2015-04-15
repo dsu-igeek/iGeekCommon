@@ -16,13 +16,14 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 
 public class NameContainsRule extends NameRule
 {
 	static final long serialVersionUID = -6207664795110002560L;
 	String containsString;
-	static MessageFormat formatter = new MessageFormat(Messages.getString("NameContainsRule.nameContains")); //$NON-NLS-1$
+	static MessageFormat formatter = new MessageFormat(_("Files whose names contain \"{0}\""));  //$NON-NLS-1$
 	/**
 	 * @return Returns the endString.
 	 */

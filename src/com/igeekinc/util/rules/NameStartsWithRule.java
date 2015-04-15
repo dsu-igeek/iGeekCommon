@@ -16,13 +16,14 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 
 public class NameStartsWithRule extends NameRule
 {
 	static final long serialVersionUID = 2141305024849657812L;
 	String startString;
-	static MessageFormat formatter = new MessageFormat(Messages.getString("NameStartsWithRule.filesNamesStartWith")); //$NON-NLS-1$
+	static MessageFormat formatter = new MessageFormat(_("Files whose names start with \"{0}\"")); //$NON-NLS-1$
 	public NameStartsWithRule(String inStartString, boolean caseSensitive, boolean excludeSubDirectories)
 	{
 		super(inStartString + "*", caseSensitive, excludeSubDirectories); //$NON-NLS-1$

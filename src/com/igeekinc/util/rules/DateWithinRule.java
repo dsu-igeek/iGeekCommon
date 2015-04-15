@@ -16,6 +16,7 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.util.Date;
 import java.util.GregorianCalendar;
 
@@ -101,50 +102,50 @@ public class DateWithinRule extends DateRule
 			switch (period)
 			{
 			case kLastDay:
-				return(Messages.getString("DateWithinRule.modWithinLastDay")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last day"));  //$NON-NLS-1$
 			case kLast2Days:
-				return(Messages.getString("DateWithinRule.modWithinLastTwoDays")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last two days"));  //$NON-NLS-1$
 			case kLast3Days:
-				return(Messages.getString("DateWithinRule.modWithinLastThreeDays")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last three days"));  //$NON-NLS-1$
 			case kLastWeek:
-				return(Messages.getString("DateWithinRule.modWithinLastWeek")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last week"));  //$NON-NLS-1$
 			case kLast2Weeks:
-				return(Messages.getString("DateWithinRule.modWitinLastTwoWeeks")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last two weeks"));  //$NON-NLS-1$
 			case kLast3Weeks:
-				return(Messages.getString("DateWithinRule.modWithinLastThreeWeeks")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last three weeks"));  //$NON-NLS-1$
 			case kLastMonth:
-				return(Messages.getString("DateWithinRule.modWithinLastMonth")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last month"));  //$NON-NLS-1$
 			case kLast2Months:
-				return(Messages.getString("DateWithinRule.modWithinLastTwoMonths")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last two months"));  //$NON-NLS-1$
 			case kLast3Months:
-				return(Messages.getString("DateWithinRule.modWithinLastThreeMonths")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last three months"));  //$NON-NLS-1$
 			case kLast6Months:
-				return(Messages.getString("DateWithinRule.modWithinLastSixMonths")); //$NON-NLS-1$
+				return(_("Files whose last modified time is within the last six months"));  //$NON-NLS-1$
 			}
 			break;
 		case kCreatedTime:
 			switch (period)
 			{
 			case kLastDay:
-				return(Messages.getString("DateWithinRule.createWithinLastDay")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last day"));  //$NON-NLS-1$
 			case kLast2Days:
-				return(Messages.getString("DateWithinRule.createWithinLastTwoDays")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last two days"));  //$NON-NLS-1$
 			case kLast3Days:
-				return(Messages.getString("DateWithinRule.createWithinLastThreeDays")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last three days"));  //$NON-NLS-1$
 			case kLastWeek:
-				return(Messages.getString("DateWithinRule.createWithinLastWeek")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last week"));  //$NON-NLS-1$
 			case kLast2Weeks:
-				return(Messages.getString("DateWithinRule.createWithinLastTwoWeeks")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last two weeks"));  //$NON-NLS-1$
 			case kLast3Weeks:
-				return(Messages.getString("DateWithinRule.createWithinLastThreeWeeks")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last three weeks"));  //$NON-NLS-1$
 			case kLastMonth:
-				return(Messages.getString("DateWithinRule.createWithinLastMonth")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last month"));  //$NON-NLS-1$
 			case kLast2Months:
-				return(Messages.getString("DateWithinRule.createWithinLastTwoMonths")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last two months"));  //$NON-NLS-1$
 			case kLast3Months:
-				return(Messages.getString("DateWithinRule.createWithinLastThreeMonths")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last three months"));  //$NON-NLS-1$
 			case kLast6Months:
-				return(Messages.getString("DateWithinRule.createWithinLastSixMonths")); //$NON-NLS-1$
+				return(_("Files whose creation time is within the last six months"));  //$NON-NLS-1$
 			}
 			break;
 		}

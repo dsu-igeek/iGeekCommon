@@ -16,6 +16,7 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -23,8 +24,8 @@ import java.util.GregorianCalendar;
 public class DateAfterRule extends DateRule
 {
 	static final long serialVersionUID = -3805541925136691234L;
-	static MessageFormat modDateFormatter = new MessageFormat(Messages.getString("DateAfterRule.modDateAfter")); //$NON-NLS-1$
-	static MessageFormat createDateFormatter = new MessageFormat(Messages.getString("DateAfterRule.createDateAfter")); //$NON-NLS-1$
+	static MessageFormat modDateFormatter = new MessageFormat(_("Files whose last modified time is after {0, date,MMMM d, yyyy}")); //$NON-NLS-1$
+	static MessageFormat createDateFormatter = new MessageFormat(_("Files whose creation time is after {0, date,MMMM d, yyyy}")); //$NON-NLS-1$
 	
 	public DateAfterRule(Date afterDate, int dateField)
 	{

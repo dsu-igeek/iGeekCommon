@@ -32,9 +32,9 @@ import com.igeekinc.util.xmlserial.serializers.LongSerializeHandler;
 
 public class DateRuleSerializeHandler extends ObjectToXMLSerializer<DateRule>
 {
-    public final static String kStartDateFieldName = "startDate";
-    public final static String kEndDateFieldName = "endDate";
-    public final static String kDateFieldFieldName = "dateField";
+    public final static String kStartDateFieldName = "startDate"; //$NON-NLS-1$
+    public final static String kEndDateFieldName = "endDate"; //$NON-NLS-1$
+    public final static String kDateFieldFieldName = "dateField"; //$NON-NLS-1$
 
     private final static AttributesImpl attrs = new AttributesImpl();
     private final static XMLObjectSerializeInfo [] fieldMappings = {

@@ -16,6 +16,7 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -23,8 +24,8 @@ import java.util.GregorianCalendar;
 public class DateBeforeRule extends DateRule
 {
 	static final long serialVersionUID = -3192459875373522283L;
-	static MessageFormat modDateFormatter = new MessageFormat(Messages.getString("DateBeforeRule.modDateBefore")); //$NON-NLS-1$
-	static MessageFormat createDateFormatter = new MessageFormat(Messages.getString("DateBeforeRule.createDateBefore")); //$NON-NLS-1$
+	static MessageFormat modDateFormatter = new MessageFormat(_("Files whose last modified time is before {0, date,MMMM d, yyyy}")); //$NON-NLS-1$
+	static MessageFormat createDateFormatter = new MessageFormat(_("Files whose creation time is before {0, date,MMMM d, yyyy}")); //$NON-NLS-1$
 	
 	public DateBeforeRule(Date beforeDate, int dateField)
 	{

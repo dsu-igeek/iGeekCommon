@@ -16,6 +16,7 @@
  
 package com.igeekinc.util;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -677,31 +678,31 @@ public class RepeatingDate extends Date
   				switch(curDayOfWeekNum)
 				{
 				case Calendar.SUNDAY:
-					daysString.append(Localizable.getString("RepeatingDate.sundayStr")); //$NON-NLS-1$
+					daysString.append(_("Sunday")); //$NON-NLS-1$
 					break;
 				case Calendar.MONDAY:
-					daysString.append(Localizable.getString("RepeatingDate.mondayStr")); //$NON-NLS-1$
+					daysString.append(_("Monday")); //$NON-NLS-1$
 					break;
 				case Calendar.TUESDAY:
-					daysString.append(Localizable.getString("RepeatingDate.tuesdayStr")); //$NON-NLS-1$
+					daysString.append(_("Tuesday")); //$NON-NLS-1$
 					break;
 				case Calendar.WEDNESDAY:
-					daysString.append(Localizable.getString("RepeatingDate.wednesdayStr")); //$NON-NLS-1$
+					daysString.append(_("Wednesday")); //$NON-NLS-1$
 					break;
 				case Calendar.THURSDAY:
-					daysString.append(Localizable.getString("RepeatingDate.thursdayStr")); //$NON-NLS-1$
+					daysString.append(_("Thursday")); //$NON-NLS-1$
 					break;
 				case Calendar.FRIDAY:
-					daysString.append(Localizable.getString("RepeatingDate.fridayStr")); //$NON-NLS-1$
+					daysString.append(_("Friday")); //$NON-NLS-1$
 					break;
 				case Calendar.SATURDAY:
-					daysString.append(Localizable.getString("RepeatingDate.saturdayStr")); //$NON-NLS-1$
+					daysString.append(_("Saturday")); //$NON-NLS-1$
 					break;
   				}
   				needsComma = true;
   			}
   		}
-  		returnString = MessageFormat.format(Localizable.getString("RepeatingDate.everyWeekFormat"), new Object[]{daysString.toString(), new Date(getNextTime())}); //$NON-NLS-1$
+  		returnString = MessageFormat.format(_("every {0} at {1,time,short}"), new Object[]{daysString.toString(), new Date(getNextTime())}); //$NON-NLS-1$
   	}
   	/*
   	if (!dayOfMonth[0])

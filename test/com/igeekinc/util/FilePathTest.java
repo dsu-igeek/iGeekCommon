@@ -609,6 +609,7 @@ public class FilePathTest extends iGeekTestCase
     	FilePath relativePath = FilePath.getFilePath(relativePathString);
     	assertFalse(absolutePath.equals(relativePath));
     	FilePath newAbsolutePath = relativePath.makeAbsolute();
+    	assertTrue(newAbsolutePath.isAbsolute());
     	assertEquals(absolutePath, newAbsolutePath);
     }
 }

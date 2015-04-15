@@ -16,6 +16,7 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 
 import com.igeekinc.util.FileLike;
@@ -25,8 +26,8 @@ public class ExtensionEqualsRule extends NameRule
 	static final long serialVersionUID = 4157923628127883533L;
 	boolean is;
 	String extensionString;
-	static MessageFormat areFormatter = new MessageFormat(Messages.getString("ExtensionEqualsRule.extensionsAre")); //$NON-NLS-1$
-	static MessageFormat areNotFormatter = new MessageFormat(Messages.getString("ExtensionEqualsRule.extensionsAreNot")); //$NON-NLS-1$
+	static MessageFormat areFormatter = new MessageFormat(_("Files whose extensions are \"{0}\""));  //$NON-NLS-1$
+	static MessageFormat areNotFormatter = new MessageFormat(_("Files whose extensions are not \"{0}\""));  //$NON-NLS-1$
 	/**
 	 * @return Returns the endString.
 	 */

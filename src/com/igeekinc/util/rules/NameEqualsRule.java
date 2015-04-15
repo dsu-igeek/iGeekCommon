@@ -16,13 +16,14 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 
 public class NameEqualsRule extends NameRule
 {
 	static final long serialVersionUID = 8738733921589143941L;
 	String name;
-	static MessageFormat formatter = new MessageFormat(Messages.getString("NameEqualsRule.filesNamed")); //$NON-NLS-1$
+	static MessageFormat formatter = new MessageFormat(_("Files named \"{0}\""));  //$NON-NLS-1$
 	public NameEqualsRule(String inName, boolean caseSensitive, boolean excludeSubDirectories)
 	{
 		super(inName, caseSensitive, excludeSubDirectories);

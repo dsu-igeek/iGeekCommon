@@ -16,6 +16,8 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
+
 import java.util.Date;
 import java.util.GregorianCalendar;
 
@@ -57,9 +59,9 @@ public class DateTodayRule extends DateRule
 		switch(getDateField())
 		{
 		case kModifiedTime:
-			return(Messages.getString("DateTodayRule.modTimeToday")); //$NON-NLS-1$
+			return(_("Files whose last modified time is today")); 
 		case kCreatedTime:
-			return(Messages.getString("DateTodayRule.creationTimeToday")); //$NON-NLS-1$
+			return(_("Files whose creation time is today")); 
 		}
 		throw new InternalError("Unexpected DateField "+getDateField()); //$NON-NLS-1$
 	}

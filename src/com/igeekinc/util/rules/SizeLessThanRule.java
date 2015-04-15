@@ -16,6 +16,7 @@
  
 package com.igeekinc.util.rules;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.text.MessageFormat;
 
 import com.igeekinc.util.FileLike;
@@ -23,7 +24,7 @@ import com.igeekinc.util.FileLike;
 public class SizeLessThanRule extends SizeRule
 {
 	static final long serialVersionUID = -7729756247652132257L;
-	static MessageFormat formatter = new MessageFormat(Messages.getString("SizeLessThanRule.sizeLessThan")); //$NON-NLS-1$
+	static MessageFormat formatter = new MessageFormat(_("Files whose size is less than {0} KB")); //$NON-NLS-1$
 	
 	/**
 	 * @param inSize

@@ -16,6 +16,7 @@
  
 package com.igeekinc.util;
 
+import static com.igeekinc.util.rules.Internationalization._;
 import java.io.Serializable;
 import java.text.MessageFormat;
 import java.util.Date;
@@ -145,27 +146,27 @@ public class IntervalDate extends RepeatingDate
 		{
 			case kDaysInt:
 				if (interval == 1)
-					returnString = MessageFormat.format(Localizable.getString("IntervalDate.everyDayFormat"), new Object[]{startDate}); //$NON-NLS-1$
+					returnString = MessageFormat.format(_("every day at {0,time,short}"), new Object[]{startDate}); //$NON-NLS-1$
 				else
-					returnString = MessageFormat.format(Localizable.getString("IntervalDate.everyNDaysFormat"), new Object[]{new Long(interval), startDate}); //$NON-NLS-1$
+					returnString = MessageFormat.format(_("every {0} days at {1,time,short} starting on {1,date}"), new Object[]{new Long(interval), startDate}); //$NON-NLS-1$
 				break;
 			case kWeeksInt:
 				if (interval == 1)
-					returnString = MessageFormat.format(Localizable.getString("IntervalDate.everyWeekFormat"), new Object[]{startDate}); //$NON-NLS-1$
+					returnString = MessageFormat.format(_("every week at {0, time} on {0, time,EEEEEEEE}"), new Object[]{startDate}); //$NON-NLS-1$
 				else
-					returnString = MessageFormat.format(Localizable.getString("IntervalDate.everyNWeeksFormat"), new Object[]{new Long(interval), startDate}); //$NON-NLS-1$
+					returnString = MessageFormat.format(_("every {0} weeks at {1, time} on {1, time,EEEEEEEE}"), new Object[]{new Long(interval), startDate}); //$NON-NLS-1$
 				break;
 			case kHoursInt:
 				if (interval == 1)
-					returnString = MessageFormat.format(Localizable.getString("IntervalDate.everyHourFormat"), new Object[]{startDate}); //$NON-NLS-1$
+					returnString = MessageFormat.format(_("every hour at {0, time,mm} minutes after the hour"), new Object[]{startDate}); //$NON-NLS-1$
 				else
-					returnString = MessageFormat.format(Localizable.getString("IntervalDate.everyNHoursFormat"), new Object[]{new Long(interval), startDate}); //$NON-NLS-1$
+					returnString = MessageFormat.format(_("every {0} hours at {1, time,mm} minutes after the hour"), new Object[]{new Long(interval), startDate}); //$NON-NLS-1$
 				break;
 			case kMinutesInt:
 				if (interval == 1)
-					returnString = Localizable.getString("IntervalDate.everyMinuteFormat"); //$NON-NLS-1$
+					returnString = _("every minute"); //$NON-NLS-1$
 				else
-					returnString = MessageFormat.format(Localizable.getString("IntervalDate.everyNMinutesFormat"), new Object[]{new Long(interval)}); //$NON-NLS-1$
+					returnString = MessageFormat.format(_("every {0} minutes"), new Object[]{new Long(interval)}); //$NON-NLS-1$
 				break;
 		}
 		return(returnString);

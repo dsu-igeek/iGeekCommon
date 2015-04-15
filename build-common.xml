@@ -7,7 +7,7 @@
 		<path id="groovy">
 			<pathelement location="${basedir}/../iGeekCommon/antlibs/groovy-all-2.1.5.jar"/>
 		</path>
-		<taskdef resource="net/sf/antcontrib/antcontrib.properties">
+		<taskdef resource="net/sf/antcontrib/antlib.xml">
 			<classpath>
 				<pathelement location="${basedir}/../iGeekCommon/antlibs/ant-contrib-1.0b3.jar"/>
 			</classpath>
